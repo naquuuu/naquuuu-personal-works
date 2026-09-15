@@ -1,0 +1,104 @@
+# NAQUUUU Personal Engineering Workspace — Operating Guide & Definition of Done
+
+This workspace is the central engineering operating hub for personal projects, creative explorations, portfolio applications, and the personal blog (`naquuuu.github.io`). It is designed around a **Single GCP Project, Multi-Repo Architecture**.
+
+---
+
+## CRITICAL RULES (Always Active)
+
+1. **Clean git before starting**: Each child repo in `projects/` and the root hub must maintain clean working trees (`git status` clean).
+2. **Strict Corporate Isolation**: Zero MAPCLUB or corporate data, stakeholder names, or credentials allowed in this workspace. All personal code must remain strictly separated.
+3. **Single GCP Project Economy**: All personal projects, scripts, and OpenCode sessions route through the single personal Google Cloud Project (`.env` / `.vscode/settings.json`).
+4. **Pre-Commit Sanitization**: Run `python scripts/verify_sanitization.py` before committing or pushing to any public GitHub repository.
+5. **Independent Sub-Repos**: Subprojects live in `projects/<repo-slug>`. Never commit child git repositories into the root hub.
+
+---
+
+## 1. Pre-Commit Gates
+
+Before committing in any project, run the relevant gate from the hub root:
+
+| Gate | Command | When |
+| :--- | :--- | :--- |
+| **Sanitization & Leak Prevention** | `python scripts/verify_sanitization.py` | Before committing to any public repository |
+| **Multi-Repo Audit** | `python scripts/sync_all_repos.py` | Before ending a work session or pushing |
+| **Blog Reliability QA** | `python scripts/verify_blog_qa.py` (inside blog repo) | Any blog or portfolio HTML/CSS/JS edits |
+| **New Project Scaffolding** | `python scripts/scaffold_personal_project.py --name <slug>` | Starting a new repository |
+
+---
+
+## 2. Multi-Repo Architecture Protocol
+
+### Directory Structure
+```
+C:\personal\naquuuu\
+├── .env                              # Global personal GCP / Gemini credentials (git-ignored)
+├── .vscode/settings.json             # Antigravity IDE personal GCP project context
+├── AGENTS.md                         # This operating manual
+├── README.md                         # Hub directory & active project index
+├── internal-docs/                    # Private ADRs, roadmap, notes (git-tracked in hub)
+├── projects/                         # All independent git repos live here (git-ignored by hub)
+│   ├── naquuuu.github.io/            # Blog & portfolio (remote: github.com/naquuuu/naquuuu.github.io)
+│   └── <new-project>/                # Future repositories (remote: github.com/naquuuu/<new-project>)
+└── scripts/                          # Workspace automation & QA gates
+```
+
+### Protocol Rules
+- **Adding a Project**: Clone or scaffold into `projects/<repo-name>`.
+- **Git Independence**: Run `git` commands inside `projects/<repo-name>`. The hub `.gitignore` explicitly ignores `projects/` to prevent submodule entanglement.
+- **Environment Inheritance**: Child projects read credentials from the hub's root `.env` or global user environment variables (`GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`).
+
+---
+
+## 3. Model Routing & Data Classification
+
+| Tier | Data | Allowed Models |
+| :--- | :--- | :--- |
+| **TIER 1 Private Personal** | Personal API keys, private passwords, unreleased private source code | Gemini (paid no-train) / Vertex AI |
+| **TIER 2 Internal Workspace** | Workspace scripts, notes, roadmaps, technical ADRs | Any model (free-tier OK) |
+| **TIER 3 Public Open-Source** | Published blog posts, public portfolio UI, open-source repositories | Any model |
+
+**Forbidden**: Storing corporate business data, enterprise credentials, or internal company architectures in this workspace.
+
+---
+
+## 4. Behavioral Guidelines
+
+### Think Before Coding
+State assumptions. If uncertain, verify. Keep designs straightforward.
+
+### Simplicity First
+Minimum code that solves the problem. No unnecessary dependencies or premature abstraction. If 200 lines could be 50, rewrite.
+
+### Surgical Changes
+Touch only what is requested. Don't add unsolicited refactors to adjacent code. Match existing repository conventions.
+
+### Goal-Driven Execution
+Every task gets clear success criteria: `1. [Step] → verify: [check]`. Loop until verified with working code.
+
+### Concise Output
+Lead with action. Number steps. Cap lists at 5 items. No unnecessary conversational filler.
+
+### Reality Grounding & Anti-Slop Standards
+- **Zero Synthetic Claims**: Never invent metrics or unverifiable performance statements (e.g. avoid claims like "60fps", "sub-millisecond latency", or "zero memory leaks" without empirical instrumentation).
+- **Accessible & Responsive Baseline**: Every web UI must enforce responsive layouts, mobile viewport tags, descriptive `alt` text on images, and zero inline width hacks.
+
+---
+
+## 5. Subsystem Definitions of Done
+
+### A. Web Apps & Portfolios
+1. **Responsive First**: Fluid layout down to 320px viewport without horizontal overflow (`overflow-x: clip`).
+2. **Modern CSS & Tokens**: Vanilla CSS or curated design system using CSS variables, modern semantic typography, and accessible contrast ratios.
+3. **SEO & Accessibility**: Semantic HTML5, unique element IDs for testability, and standard meta tags.
+
+### B. Personal Blog (`naquuuu.github.io`)
+1. **Zero Inline Width Attributes**: No inline `style=".*width"` elements.
+2. **Subpage Anchor Integrity**: All in-page anchors must resolve to valid DOM IDs.
+3. **Audio / Media Resilience**: Any audio features must use valid user gestures (`click`, `pointerdown`) and deterministic loop handling.
+4. **Reading Column**: Constrained to `max-width: 72ch; margin: 0 auto; min-width: 0;`.
+
+### C. CLI & Tooling Scripts
+1. **Cross-Platform**: Compatible with Windows PowerShell and Unix bash environments.
+2. **UTF-8 Safe**: Windows console stdout safely handles UTF-8 characters without encoding crashes.
+3. **Idempotent**: Scripts can be run repeatedly without duplicating state or corrupting data.

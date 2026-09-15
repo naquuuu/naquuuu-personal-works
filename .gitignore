@@ -1,0 +1,42 @@
+# ==========================================
+# NAQUUUU PERSONAL WORKSPACE - GITIGNORE
+# Multi-repo Hub & Environment Protection
+# ==========================================
+
+# 1. Independent Sub-Repositories
+# (Each project inside projects/ manages its own git lifecycle & remote origin)
+projects/
+
+# 2. Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# 3. Agent IDE, Subagents & Local Environment Caches
+.antigravity/
+.gemini/
+.opencode/
+.idea/
+.vscode/
+
+# 4. Python Virtual Environments & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# 5. Node / JS Caches (if tooling run at root)
+node_modules/
+.npm/
+
+# 6. Operating System Junk Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
