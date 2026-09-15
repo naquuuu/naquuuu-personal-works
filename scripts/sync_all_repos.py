@@ -37,20 +37,25 @@ def audit_projects(fetch=False):
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     projects_dir = os.path.join(workspace_root, "projects")
 
-    if not os.path.exists(projects_dir):
-        print(f"❌ Projects directory not found: {projects_dir}")
-        return 1
-
-    subdirs = [d for d in os.listdir(projects_dir) if os.path.isdir(os.path.join(projects_dir, d))]
     repos = []
 
-    for d in subdirs:
-        repo_path = os.path.join(projects_dir, d)
-        if os.path.exists(os.path.join(repo_path, ".git")):
-            repos.append((d, repo_path))
+    # 1. Check direct child repositories (e.g., blog/)
+    direct_candidates = ["blog"]
+    for d in os.listdir(workspace_root):
+        candidate = os.path.join(workspace_root, d)
+        if d != ".git" and os.path.isdir(candidate) and os.path.exists(os.path.join(candidate, ".git")):
+            if (d, candidate) not in repos:
+                repos.append((d, candidate))
+
+    # 2. Check projects/ subdirectories
+    if os.path.exists(projects_dir):
+        for d in os.listdir(projects_dir):
+            candidate = os.path.join(projects_dir, d)
+            if os.path.isdir(candidate) and os.path.exists(os.path.join(candidate, ".git")):
+                repos.append((f"projects/{d}", candidate))
 
     if not repos:
-        print(f"ℹ️ No git repositories found inside '{projects_dir}'.")
+        print(f"ℹ️ No child git repositories found inside '{workspace_root}'.")
         return 0
 
     print("=" * 75)

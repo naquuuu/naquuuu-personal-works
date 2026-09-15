@@ -36,16 +36,15 @@ C:\personal\naquuuu\
 ├── .vscode/settings.json             # Antigravity IDE personal GCP project context
 ├── AGENTS.md                         # This operating manual
 ├── README.md                         # Hub directory & active project index
+├── blog/                             # Personal blog & portfolio (git-ignored by hub, remote: naquuuu.github.io)
 ├── internal-docs/                    # Private ADRs, roadmap, notes (git-tracked in hub)
-├── projects/                         # All independent git repos live here (git-ignored by hub)
-│   ├── naquuuu.github.io/            # Blog & portfolio (remote: github.com/naquuuu/naquuuu.github.io)
-│   └── <new-project>/                # Future repositories (remote: github.com/naquuuu/<new-project>)
+├── projects/                         # Additional independent repos live here (git-ignored by hub)
 └── scripts/                          # Workspace automation & QA gates
 ```
 
 ### Protocol Rules
-- **Adding a Project**: Clone or scaffold into `projects/<repo-name>`.
-- **Git Independence**: Run `git` commands inside `projects/<repo-name>`. The hub `.gitignore` explicitly ignores `projects/` to prevent submodule entanglement.
+- **Adding a Project**: Clone or scaffold into `projects/<repo-name>` or directly at root for major repositories (like `blog/`).
+- **Git Independence**: Run `git` commands inside each child repository (`blog/` or `projects/<name>`). The hub `.gitignore` explicitly ignores child repositories to prevent submodule entanglement.
 - **Environment Inheritance**: Child projects read credentials from the hub's root `.env` or global user environment variables (`GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`).
 
 ---

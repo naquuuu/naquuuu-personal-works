@@ -4,7 +4,8 @@
 # ==========================================
 
 # 1. Independent Sub-Repositories
-# (Each project inside projects/ manages its own git lifecycle & remote origin)
+# (Each project manages its own git lifecycle & remote origin)
+blog/
 projects/
 
 # 2. Environment Variables & Secrets

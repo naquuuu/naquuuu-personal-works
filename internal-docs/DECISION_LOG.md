@@ -25,8 +25,8 @@ This log records major technical and structural decisions made across personal p
 - **Status**: Accepted
 - **Context**: The personal blog (`naquuuu.github.io`) was originally located inside `c:\work\mapclub-po-workspace\blog`.
 - **Decision**:
-  - Relocated repository to `C:\personal\naquuuu\projects\naquuuu.github.io`.
-  - Created an NTFS directory junction at `c:\work\mapclub-po-workspace\blog` pointing to the new personal location.
+  - Relocated repository to `C:\personal\naquuuu\blog` directly as a child repository of `naquuuu`.
+  - Created an NTFS directory junction at `c:\work\mapclub-po-workspace\blog` pointing to `C:\personal\naquuuu\blog`.
 - **Consequences**:
-  - Blog files are physically housed in the personal hub.
+  - Blog repository is physically housed directly inside `naquuuu/blog/` with its own git origin (`naquuuu.github.io`).
   - MAPCLUB workspace can still source, draft, and run blog QA gates without breaking paths or relative imports.

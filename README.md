@@ -11,12 +11,12 @@ naquuuu/
 ├── .env.example                      # Template for personal GCP & Gemini keys
 ├── AGENTS.md                         # Operating Guide & Definition of Done
 ├── README.md                         # Workspace directory
+├── blog/                             # Personal blog & showcase portfolio (naquuuu.github.io repo)
 ├── internal-docs/                    # Architectural decisions & roadmaps
 │   ├── DECISION_LOG.md
 │   ├── ROADMAP.md
 │   └── TECH_STACK.md
-├── projects/                         # Standalone GitHub repositories
-│   └── naquuuu.github.io/            # Blog & portfolio site
+├── projects/                         # Additional standalone GitHub repositories
 └── scripts/                          # Workspace automation & QA gates
     ├── sync_all_repos.py             # Multi-repo status checker
     ├── verify_sanitization.py        # Leak-prevention auditor
@@ -29,7 +29,7 @@ naquuuu/
 
 | Repository | Path | Purpose | Remote |
 | :--- | :--- | :--- | :--- |
-| **naquuuu.github.io** | `projects/naquuuu.github.io` | Personal blog & showcase portfolio | [github.com/naquuuu/naquuuu.github.io](https://github.com/naquuuu/naquuuu.github.io) |
+| **blog (naquuuu.github.io)** | `blog/` | Personal blog & showcase portfolio | [github.com/naquuuu/naquuuu.github.io](https://github.com/naquuuu/naquuuu.github.io) |
 
 ---
 
