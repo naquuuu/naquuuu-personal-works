@@ -139,3 +139,18 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Redundancy on desktop after scroll is intentional (owner preference, not drift); if the pill ever feels duplicative, it can be dropped without touching the floating switcher.
   - Committed and pushed to production: 61b77f3..4883dd5 (blog repo).
+
+---
+
+## ADR-010: Header Lens Pill Removed; Unified Floating Switcher Trigger
+- **Date**: 2026-09-17
+- **Status**: Accepted
+- **Context**: After live use with both desktop controls, the owner judged the header lens pill redundant with the floating switcher and asked to remove it.
+- **Decision**:
+  - The floating switcher is the single post-load lens control on every viewport.
+  - Its trigger is unified and scroll-driven (scrollY > 180, hidden at top) on all breakpoints; the desktop-only IntersectionObserver and its hero-strip observation were deleted along with heroModeBar.
+  - Remaining button groups: hero strip (in-flow) + floating switcher, both synced via [data-mode-tab].
+  - Cache params bumped to 20260917c per the post-deploy CSS/JS change rule.
+- **Consequences**:
+  - At load (scrollY = 0) no lens switcher is visible; it appears after minimal scroll. The in-flow hero switcher remains reachable at the hero.
+  - One mechanism, no breakpoint guards; future switcher work touches a single code path.
