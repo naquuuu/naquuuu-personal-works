@@ -111,3 +111,28 @@ Lead with action. Number steps. Cap lists at 5 items. No unnecessary conversatio
 1. **Cross-Platform**: Compatible with Windows PowerShell and Unix bash environments.
 2. **UTF-8 Safe**: Windows console stdout safely handles UTF-8 characters without encoding crashes.
 3. **Idempotent**: Scripts can be run repeatedly without duplicating state or corrupting data.
+
+---
+
+## 6. Self-Reinforcing Memory & Invariant Preferences
+
+To ensure continuous learning across prompts and sessions, all AI agents must observe these established user preferences:
+
+1. **Continuous ADR Logging**: Whenever a major technical decision, workflow change, or architectural pattern is agreed upon, log it immediately in `internal-docs/DECISION_LOG.md`.
+2. **Active Multi-Repo Registry**:
+   - `.` → `naquuuu-personal-works` (Meta-hub, orchestration, pre-commit QA gates, `.env`)
+   - `projects/random-stuff/` → `naquuuu/random-stuff` (Playground, rapid spikes, disposable scripts)
+   - `projects/<slug>/` → Independent GitHub repo (Dedicated production-ready apps & tools, own `.venv`, own tests)
+   - `blog/` → `naquuuu/naquuuu.github.io` (Public blog, portfolio, published findings)
+3. **Deterministic Prompt Routing**:
+   - `[PROJECT: <slug>]`: Enforce dedicated project scaffolding via `python scripts/scaffold_personal_project.py --name <slug>`.
+   - `[SANDBOX]` or `[SPIKE]`: Direct to `projects/random-stuff/<folder>`.
+   - `[BLOG]`: Direct to `blog/`.
+   - `[HUB]`: Direct to root hub.
+4. **Diagram Standard**: Always use standard Mermaid flowcharts (` ```mermaid `) instead of fragile ASCII box art to avoid line-wrapping breakage on different viewport sizes.
+5. **Data & Scraper Guidelines**:
+   - Python 3.10+ with type hints.
+   - Polite crawling: randomized User-Agents, exponential backoff, rate limiting.
+   - Tabular data exported to Parquet and/or SQLite.
+   - Mocked test fixtures (`pytest`) to avoid hitting live servers during testing.
+
