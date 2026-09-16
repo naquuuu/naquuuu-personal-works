@@ -88,3 +88,40 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Honest corpus coverage reporting (chapter 7 is explicitly thin) instead of padded/invented content.
   - Polite scraping policy (2s + jitter, UA rotation, 3s timeout, 2 retries, robots.txt respected) keeps usage within public-source ToS.
+
+---
+
+## ADR-007: Obys-Style Editorial Redesign of the Blog (Dual-Mode Preserved)
+- **Date**: 2026-09-17
+- **Status**: Accepted
+- **Context**: User wants naquuuu.github.io to feel design-driven like obys.agency while keeping the soul that beat the discontinued _revamp attempt (production won on soul; subtract-only process killed that revamp).
+- **Decision**:
+  - Public brand is 'naquuuu.build' (stage name spanning professional + creative contexts); real name 'krishna, alias naquuuu' demoted to the hero kicker. Footer wordmark = naquuuu.
+  - Copy canon: Murphy's Law is the intro spine; thesis 'systems that anticipate failure. taste that anticipates feeling.' + sub-thesis 'mapping every possibility, from code to culture.'; two-lens framing justifies the dual-mode theme switcher.
+  - No em-dashes, ever, in any user-facing copy; enforced by grep gate going forward.
+  - Design tokens (additive only): Space Grotesk display + JetBrains Mono labels/code on Open Sans body; culture-mode --text-muted: #B58287 (measured 5.0:1 to 6.1:1); --ease-editorial, reveal, marquee, media-hover tokens.
+  - Layout language: ghost-numeral editorial rows (dossiers, loop hairline grid), pure-CSS marquee strips (aria-hidden), scroll-reveal via IntersectionObserver with .js no-JS guard, dual-panel-safe, prefers-reduced-motion off-switch; footer ghost wordmark.
+  - Audio: legacy once-gesture autoplay trigger deleted; playback strictly button-driven (ended-loop + metadata preload kept).
+  - Perf: krishna-artwork served as 720px WebP (102 KB) + JPEG fallback (121 KB) via picture element (was 303 KB 1280px JPEG, 3x oversized for its column). Heavy gallery JPEGs turned out to be ~3.3 MB of UNREFERENCED repo ballast (the lessons-learned 8 MB page payload figure was stale); deletion/move deferred to user decision.
+- **Consequences**:
+  - Home page identity shifts to brand-first (naquuuu.build) while keeping professional anchor (kicker), all warmth (twin, kafin lyric, stories) intact.
+  - verify_blog_qa.py referenced by AGENTS.md and CI does not exist on disk; manual gate equivalents ran (inline-width grep 0, anchor audit, sanitization PASS, node syntax check). Building the missing gate script is a flagged follow-up.
+  - WP5 (subpage port) pending; live site not pushed until user approves.
+
+---
+
+## ADR-008: Copy Canon, Model Routing, and Mobile Control Contract for the Blog
+- **Date**: 2026-09-17
+- **Status**: Accepted
+- **Context**: Following ADR-007, the owner wanted deeper copy transformation and per-breakpoint switcher coverage; Gemini 3.1 Pro served as read-only QA auditor and returned FINAL GO.
+- **Decision**:
+  - Copy canon (Muse Spark 1.3 Contributor drafted, owner-curated): kickers 'shipped systems', 'culture as fuel', 'hands, ears, closet', 'notes: software and systems', 'notes: music, clothes'; loop cards 'plan for bad days' / 'map the edge cases early' / 'keep a little slack' / 'help people recover fast' (systems) and 'paint without undo' / 'cut cloth like a plan' / 'music that steadies me' / 'taste keeps work fresh' (culture); CTA prose ends 'my inbox is open.'; headline 'let's build something thoughtful together.' is LOCKED.
+  - Owner-approved exception: leaner specifics in the buffers card and doc 03 built line (no parametric/equipment-lead-times/flight-API-thermal-storage restoration);  and all other locked facts remain mandatory.
+  - Titles are LOCKED: all 5 dossier titles and all essay card titles (they anchor case-study pages and recruiter scanning).
+  - Per-breakpoint control contract: desktop (>=769px) uses the header lens switcher pill; mobile (<=768px) uses the first-screen hero switcher plus a scroll-driven floating switcher (visible at scrollY > 180). One control per breakpoint; the floating switcher CSS is scoped entirely inside the <=768px media block.
+  - Spotify carousel contract: mobile wraps tabs into a 2x2 chip grid with a separate index/arrow row (no horizontal scroll possible); desktop keeps the single-row strip with a JS-toggled .is-scrollable edge fade; indicator dots are real buttons with >=44px hit areas; HTML first-paint defaults must mirror the SPOTIFY_PLAYLISTS data contract exactly (Gemini NO-GO catch, since fixed).
+  - scripts/verify_blog_qa.py (in the blog repo) implements the 5 reliability gates; it now exists on disk and the CI workflow reference resolves.
+  - Model routing per WP: GLM 5.3 Flash primary editor, Muse Spark 1.3 Contributor for bulk port + copy drafting (training tier accepted by owner), Gemini 3.1 Pro read-only auditor in Antigravity, Gemini 3.8 Flash spot-checks.
+- **Consequences**:
+  - Blog redesign pushed to production in 4 per-WP commits (chore/perf/feat(home)/feat(qa)).
+  - The copy-refresh pipeline (draft brief in git-ignored drafts/, owner curates A/B, gates re-run) is the repeatable pattern for future copy work.
