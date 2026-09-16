@@ -42,6 +42,7 @@ naquuuu-personal-works/
 | **Personal Works (Hub)** | `.` | Meta-hub, operating guides, QA scripts, workspace orchestration | [naquuuu/naquuuu-personal-works](https://github.com/naquuuu/naquuuu-personal-works) |
 | **Blog & Portfolio** | `blog/` | Personal blog & live portfolio (tracked independently) | [naquuuu/naquuuu.github.io](https://github.com/naquuuu/naquuuu.github.io) |
 | **Random Stuff (Sandbox)** | `projects/random-stuff/` | Quick experiments, prototypes, fun hacks, and ideation spikes | [naquuuu/random-stuff](https://github.com/naquuuu/random-stuff) |
+| **BI Scraper (Study Corpus)** | `projects/bi-scraper/` | PCPM/TPD study corpus from public bi.go.id sources (personal use only) | [naquuuu/bi-scraper](https://github.com/naquuuu/bi-scraper) |
 | **Dedicated Projects** | `projects/<slug>/` | Standalone long-term apps & tools with their own git lifecycles | Independent GitHub repositories |
 
 > **Note on `blog/` and `projects/`**: Both are git-ignored by this hub repository. Each sub-project maintains its own standalone `.git` history, branch management, and remote origin to prevent git submodule conflicts.

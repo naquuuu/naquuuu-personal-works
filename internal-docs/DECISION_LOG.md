@@ -71,3 +71,20 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Zero context loss across AI conversation boundaries.
   - Consistent coding and architectural patterns enforced automatically.
+
+---
+
+## ADR-006: bi-scraper Dedicated Project with Public-Source-Only Policy
+- **Date**: 2026-09-17
+- **Status**: Accepted
+- **Context**: Need a reproducible personal study corpus builder for the eight PCPM/TPD chapters without touching corporate workspaces or gated course platforms.
+- **Decision**:
+  - Scaffolded `projects/bi-scraper/` as an independent repo (own `.venv`, tests, remote `naquuuu/bi-scraper`).
+  - Public `bi.go.id` sources only (host allowlist at the HTTP layer); `pejuang.berkarirbi.id` and BIReady Masternotes remain read-in-browser only and are never fetched, and no login/paywall/DRM/PDF-secure protection is ever bypassed.
+  - Binding freshness rule: incremental fetch by default (end date = today), 60-day coverage FAIL except report-only chapter 7, `[NEWER-THAN-SYLLABUS]` flags against pinned syllabus versions.
+  - Config by reference only: `os.getenv` plus optional hub `.env` load; secret values are never copied into child repos.
+  - Exports: NotebookLM study packs (metadata + dated links + my notes) and portfolio packs (public-data-only charts + my analysis; zero course-verbatim, zero third-party PDFs).
+  - pytest suite runs fully mocked via `httpx.MockTransport` (zero live network hits).
+- **Consequences**:
+  - Honest corpus coverage reporting (chapter 7 is explicitly thin) instead of padded/invented content.
+  - Polite scraping policy (2s + jitter, UA rotation, 3s timeout, 2 retries, robots.txt respected) keeps usage within public-source ToS.
