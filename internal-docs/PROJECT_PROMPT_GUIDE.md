@@ -8,45 +8,36 @@ This guide documents the multi-repo orchestration across all personal repositori
 
 All repositories operate independently without the fragility of git submodules:
 
-```
-                          ┌────────────────────────────────────────────────────────┐
-                          │  [HUB] naquuuu/naquuuu-personal-works                  │
-                          │  https://github.com/naquuuu/naquuuu-personal-works     │
-                          │  • Single GCP / Vertex AI Credentials (.env)           │
-                          │  • Pre-commit leak audit (verify_sanitization.py)      │
-                          │  • Multi-repo status auditor (sync_all_repos.py)       │
-                          └──────────┬───────────────────┬─────────────────┬───────┘
-                                     │                   │                 │
-                git-ignored          │      git-ignored  │     git-ignored │
-                sub-folder           │      sub-folder   │     sub-folder  │
-                                     ▼                   ▼                 ▼
-┌──────────────────────────────────────┐ ┌───────────────────────────┐ ┌──────────────────────────────────────┐
-│ [SANDBOX]                            │ │ [PROJECT: <slug>]         │ │ [BLOG]                               │
-│ naquuuu/random-stuff                 │ │ naquuuu/bi-scraper        │ │ naquuuu/naquuuu.github.io            │
-│ https://github.com/naquuuu/          │ │ (New Standalone GitHub    │ │ https://github.com/naquuuu/          │
-│ random-stuff                         │ │  Repository)              │ │ naquuuu.github.io                    │
-│                                      │ │                           │ │                                      │
-│ • Disposable spikes & fast tests     │ │ • Production architecture │ │ • Public interactive articles        │
-│ • "Write & forget" prototypes        │ │ • Own .venv & tests       │ │ • Portfolio showcase                 │
-│ • Messy code is OK                   │ │ • Autonomous CLI / API    │ │ • Clean responsive design            │
-└──────────────────────────────────────┘ └─────────────┬─────────────┘ └──────────────────▲───────────────────┘
-                                                       │                                  │
-                                                       └───────── "Graduates to" ─────────┘
-                                                               (Publish research/demo)
+```mermaid
+flowchart TD
+    Hub["<b>[HUB] naquuuu-personal-works</b><br/>https://github.com/naquuuu/naquuuu-personal-works<br/>• Single GCP / Vertex AI Credentials (.env)<br/>• Pre-commit leak audit (verify_sanitization.py)<br/>• Multi-repo status auditor (sync_all_repos.py)"]
+
+    Sandbox["<b>[SANDBOX] random-stuff</b><br/>https://github.com/naquuuu/random-stuff<br/>• Disposable spikes & fast tests<br/>• Low ceremony, prototypes"]
+    
+    Project["<b>[PROJECT: slug] (e.g. bi-scraper)</b><br/>Standalone GitHub Repository<br/>• Dedicated architecture & virtualenv<br/>• CLI, tests, and modular code"]
+    
+    Blog["<b>[BLOG] naquuuu.github.io</b><br/>https://github.com/naquuuu/naquuuu.github.io<br/>• Public interactive articles<br/>• Portfolio showcase"]
+
+    Hub -->|git-ignored subfolder| Sandbox
+    Hub -->|git-ignored subfolder| Project
+    Hub -->|git-ignored subfolder| Blog
+
+    Sandbox -.->|Graduates to| Project
+    Project -.->|Showcase published on| Blog
 ```
 
 | Repository | GitHub URL | Role in the Workflow |
 | :--- | :--- | :--- |
 | **Meta Hub** | [naquuuu/naquuuu-personal-works](https://github.com/naquuuu/naquuuu-personal-works) | Manages global configs, API keys, QA scripts, and coordinates all sub-projects. |
 | **Sandbox** | [naquuuu/random-stuff](https://github.com/naquuuu/random-stuff) | Scratchpad for quick 10-minute curl/scraping tests before writing full code. |
-| **Dedicated Project** | `naquuuu/<slug>` *(e.g. `bi-scraper`)* | The standalone, production-ready tool with its own Git lifecycle and virtual environment. |
+| **Dedicated Project** | `naquuuu/<slug>` *(e.g. `bi-scraper`)* | Standalone, production-ready tool with its own Git lifecycle and virtual environment. |
 | **Blog & Portfolio** | [naquuuu/naquuuu.github.io](https://github.com/naquuuu/naquuuu.github.io) | Where final visual reports, charts, or articles derived from scraped data get published. |
 
 ---
 
 ## 2. Anatomy of a High-Impact Project Prompt
 
-To get production-grade output from an AI model rather than a toy script, your prompt should specify five key dimensions:
+To get production-grade output from an AI model rather than a toy script, specify five key dimensions:
 
 1. **Routing Tag (`[PROJECT: <slug>]`)**: Triggers the AI to scaffold an isolated repository under `projects/<slug>/` instead of writing into the hub or sandbox.
 2. **Target Data Scope**: Specifically state what data you want (e.g. BI-Rate / monetary policy decisions, exchange rates (JISDOR), foreign reserve updates, inflation statistics).
@@ -58,7 +49,7 @@ To get production-grade output from an AI model rather than a toy script, your p
 
 ## 3. Copy-Paste Template for Serious Projects (Bank Indonesia Scraper Example)
 
-```markdown
+```
 [PROJECT: bi-scraper]
 I want to build a production-grade Bank Indonesia (BI) economic data scraper and research pipeline.
 
