@@ -125,3 +125,17 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Blog redesign pushed to production in 4 per-WP commits (chore/perf/feat(home)/feat(qa)).
   - The copy-refresh pipeline (draft brief in git-ignored drafts/, owner curates A/B, gates re-run) is the repeatable pattern for future copy work.
+
+---
+
+## ADR-009: Desktop Floating Switcher Restored Alongside Header Pill
+- **Date**: 2026-09-17
+- **Status**: Accepted
+- **Context**: After live use, the owner explicitly wants the floating sticky switcher kept on desktop too (it was removed in favor of the header pill in ADR-008's control contract).
+- **Decision**:
+  - Desktop (>=769px) now has BOTH: the header lens pill (always visible in nav) and the floating switcher, which appears via IntersectionObserver once the hero switcher strip scrolls above the viewport.
+  - Mobile (<=768px) keeps its scroll-driven floating switcher (scrollY > 180); the desktop observer exits early at innerWidth <= 768 so the two mechanisms never fight.
+  - CSS restructured: base carries shared fixed positioning + .visible state for all viewports; the <=768px block only overrides top/width. All three button groups (hero strip, header pill, floating switcher) sync via [data-mode-tab].
+- **Consequences**:
+  - Redundancy on desktop after scroll is intentional (owner preference, not drift); if the pill ever feels duplicative, it can be dropped without touching the floating switcher.
+  - Committed and pushed to production: 61b77f3..4883dd5 (blog repo).
