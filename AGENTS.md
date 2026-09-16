@@ -47,6 +47,16 @@ C:\personal\naquuuu\
 - **Git Independence**: Run `git` commands inside each child repository (`blog/` or `projects/<name>`). The hub `.gitignore` explicitly ignores child repositories to prevent submodule entanglement.
 - **Environment Inheritance**: Child projects read credentials from the hub's root `.env` or global user environment variables (`GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`).
 
+### Project Routing Taxonomy & Prompt Prefixes
+To ensure all AI agents route tasks to the correct repository and enforce appropriate rigor, use these prompt prefixes:
+
+| Prompt Tag | Target Directory | Git Remote | Rigor & Definition of Done |
+| :--- | :--- | :--- | :--- |
+| **`[PROJECT: <slug>]`** | `projects/<slug>/` | Standalone GitHub repo | **Dedicated Project**: Scaffold via `python scripts/scaffold_personal_project.py --name <slug>`. Dedicated `.venv`, independent `.git`, modular architecture, tests, and documentation. Never place inside `random-stuff/`. |
+| **`[SANDBOX]`** or **`[SPIKE]`** | `projects/random-stuff/<topic>/` | `naquuuu/random-stuff` | **Playground**: Fast prototyping, exploratory spikes, disposable scripts. Low ceremony, rapid iteration. |
+| **`[BLOG]`** | `blog/` | `naquuuu/naquuuu.github.io` | **Publication**: Articles, interactive portfolio showcase. Strict blog QA, no inline widths, responsive column. |
+| **`[HUB]`** | `.` | `naquuuu/naquuuu-personal-works` | **Meta-Hub**: Automation scripts, sanitization gates, ADRs, global personal environment setup. |
+
 ---
 
 ## 3. Model Routing & Data Classification

@@ -66,6 +66,13 @@ naquuuu-personal-works/
              └──► `.` (naquuuu-personal-works hub)
 ```
 
+### 🏷️ AI Agent Prompt Tags
+Prefix your prompts so AI coding assistants immediately know where code belongs:
+- **`[PROJECT: <slug>]`** → Sets up a serious, isolated project in `projects/<slug>/` with dedicated venv, git, and tests.
+- **`[SANDBOX]`** or **`[SPIKE]`** → Places quick experiments directly in `projects/random-stuff/`.
+- **`[BLOG]`** → Works on articles or portfolio UI in `blog/`.
+- **`[HUB]`** → Modifies workspace orchestration, QA scripts, or global configs.
+
 ---
 
 ## Quickstart
