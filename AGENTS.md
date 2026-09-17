@@ -135,5 +135,5 @@ To ensure continuous learning across prompts and sessions, all AI agents must ob
    - Polite crawling: randomized User-Agents, exponential backoff, rate limiting.
    - Tabular data exported to Parquet and/or SQLite.
    - Mocked test fixtures (`pytest`) to avoid hitting live servers during testing.
-6. **Dual-Format Deliverables (Lesson Learned, 2026-09-17)**: Every study-pack export is written as BOTH `.md` and `.txt` in the same run — never update one without the other. Tooling defaults must produce both (e.g. `bi-scraper export-notebook` writes `.md` + `.txt`; `--no-txt` is the explicit opt-out). A format pair with mismatched timestamps or content is treated as stale and re-exported.
+6. **Dual-Format Deliverables (Lesson Learned, 2026-09-17)**: Every study-pack export is written as BOTH `.md` and `.txt` in the same run (`exports/notebook/` for `.md`, `exports/notebook_txt/` for `.txt` upload copies) — never update one without the other. Tooling defaults must produce both (e.g. `bi-scraper export-notebook`; `--no-txt` is the explicit opt-out). A format pair with mismatched timestamps or content is treated as stale and re-exported.
 
