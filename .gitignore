@@ -21,7 +21,8 @@ vertex-key.json
 # 3. Agent IDE, Subagents & Local Environment Caches
 .antigravity/
 .gemini/
-.opencode/
+.opencode/*
+!.opencode/agent/
 .idea/
 .vscode/
 

@@ -66,7 +66,7 @@ This log records major technical and structural decisions made across personal p
 - **Context**: Need a mechanism to ensure all major decisions and user preferences persist across sessions so AI pair-programmers learn continuously.
 - **Decision**:
   - Decisions are systematically logged in `internal-docs/DECISION_LOG.md`.
-  - User preference invariants are registered in `AGENTS.md` Section 6 (which is automatically injected into agent context at every session start).
+  - User preference invariants are registered in `AGENTS.md` Section 7 (which is automatically injected into agent context at every session start).
   - Diagrams must default to Mermaid flowcharts instead of brittle ASCII art to avoid wrapping bugs.
 - **Consequences**:
   - Zero context loss across AI conversation boundaries.
@@ -154,3 +154,26 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - At load (scrollY = 0) no lens switcher is visible; it appears after minimal scroll. The in-flow hero switcher remains reachable at the hero.
   - One mechanism, no breakpoint guards; future switcher work touches a single code path.
+
+---
+
+## ADR-011: Agent-Subagent Architecture & Two-IDE Workflow
+- **Date**: 2026-09-22
+- **Status**: Accepted
+- **Context**: Personal workspace lacked structured agent orchestration. The MAPCLUB PO Workspace proved that a 7-agent roster with strict role separation, four-block handoffs, and deterministic gates dramatically improves quality and traceability. The owner uses two IDEs (Antigravity + OpenCode) and needs a disciplined handoff protocol between them.
+- **Decision**:
+  - **7-agent roster** with two user-facing entry points (`naquuubot` as Chief of Staff, `naquuu-curator` as Aesthetic Muse) and five hidden subagents (`naquuu-builder`, `naquuu-scribe`, `naquuu-librarian`, `naquuu-skeptic`, `naquuu-verifier`). Roster capped at 7 (beyond ~7, description-based routing reliability degrades).
+  - **Persona files** live in `.opencode/agent/*.md`; permissions and registry in `opencode.jsonc`. No model fields in either — agents inherit the session model.
+  - **Four-block handoff** (Result, Files Changed, Evidence, Blockers) is the universal subagent return contract.
+  - **Author + Reviewer Pairing**: builder/scribe author, skeptic/verifier review. Max 2 review cycles before human escalation.
+  - **Two-IDE workflow**: Antigravity (AGY) authors text artifacts and audits read-only; OpenCode (deepseek) handles terminal execution and runtime verification. One writer per tree, commit at every IDE handoff.
+  - **`NAQUUUU_WORKSPACE` env var** replaces all hardcoded workspace paths. Scripts, agents, and relay skills resolve root from this variable.
+  - **`TASTE_PROFILE.md`** is the live-editable ground truth for aesthetic preferences, read by agents at task time.
+  - **Forward-compat**: `.githooks/pre-commit` and `.githooks/pre-push` (Phase 4), `host_check.py` (Phase 4), and `HOSTS.md` (Phase 4) are referenced in AGENTS.md now but implemented later.
+  - **Corporate isolation**: the architectural *pattern* is adopted from MAPCLUB; zero domain content, credentials, or stakeholder names cross over (ADR-003).
+- **Consequences**:
+  - Structured delegation replaces ad-hoc single-agent prompting.
+  - Every subagent report carries raw evidence and file citations, enabling audit.
+  - Persona changes are a single-file edit (`.opencode/agent/<name>.md` or `TASTE_PROFILE.md`) — no JSON or code changes needed.
+  - Model pinning and `verify_agent_config.py` are deliberately deferred to a future ADR once the varied provider mix is settled.
+  - Stage 1 verification fixes (2026-09-22): sanitizer gate now scans git-tracked files by default with an `--all` escape hatch (untracked scraped dumps caused false positives); the owner's intentionally published inquiry number is allowlisted; the email rule quantifier is bounded to avoid quadratic backtracking on scraped HTML; AGENTS.md sections renumbered so Agent Orchestration is Section 4.

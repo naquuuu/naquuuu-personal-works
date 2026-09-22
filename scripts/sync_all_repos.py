@@ -33,7 +33,7 @@ def run_git(repo_path, args):
     except subprocess.CalledProcessError as e:
         return None
 
-def audit_projects(fetch=False):
+def audit_projects(fetch=False, strict=False):
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     projects_dir = os.path.join(workspace_root, "projects")
 
@@ -110,11 +110,12 @@ def audit_projects(fetch=False):
     else:
         print("⚠️ SOME REPOSITORIES REQUIRE ATTENTION (UNCOMMITTED CHANGES OR UNPUSHED COMMITS)")
     print("-" * 75)
-    return 0
+    return 0 if all_clean else (1 if strict else 0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audit status across all child repositories")
     parser.add_argument("--fetch", action="store_true", help="Fetch remotes before checking status")
+    parser.add_argument("--strict", action="store_true", help="Exit 1 if any repository is dirty or has unpushed commits")
     args = parser.parse_args()
 
-    sys.exit(audit_projects(args.fetch))
+    sys.exit(audit_projects(args.fetch, args.strict))

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // NAQUUUU Personal Workspace — project-shared OpenCode config.
+  // No secrets, no PII. Restricted-data rule per AGENTS.md Section 2.
+  // Corporate isolation: zero MAPCLUB data crosses into this workspace (ADR-003).
+  "default_agent": "naquuubot",
+  "subagent_depth": 1,
+  "instructions": ["AGENTS.md"],
+  "agent": {
+    "explore": { "disable": true },
+    "general": { "disable": true },
+    "naquuubot": {
+      "description": "Chief of Staff / Engineering Orchestrator. Sole entry point for engineering tasks: screens inputs, plans, delegates to naquuu-* subagents, verifies, and reports.",
+      "mode": "primary",
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "ask",
+          "git status*": "allow",
+          "git diff*": "allow",
+          "git log*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "naquuu-*": "allow"
+        }
+      }
+    },
+    "naquuu-curator": {
+      "description": "Aesthetic, Taste & Persona Muse. Creative director for music, fashion, visual art, communication style, and personal brand.",
+      "mode": "all",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": "deny"
+      }
+    },
+    "naquuu-builder": {
+      "description": "Software & Prototype Builder. Implements code across projects, scripts, and blog features, then runs the relevant gates.",
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "task": "deny"
+      }
+    },
+    "naquuu-scribe": {
+      "description": "Content & Documentation Scribe. Drafts blog articles, technical ADRs, project documentation, and personal notes.",
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "task": "deny"
+      }
+    },
+    "naquuu-librarian": {
+      "description": "Personal Knowledge Librarian. Read-only retrieval across workspace docs, ADRs, notes, and decisions; returns citations.",
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": "deny"
+      }
+    },
+    "naquuu-skeptic": {
+      "description": "Adversarial Reviewer. Challenges specifications and code for hallucinations, unsupported claims, scope gaps, and ground-truth conflicts.",
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": "deny"
+      }
+    },
+    "naquuu-verifier": {
+      "description": "Quality Gatekeeper. Runs workspace gate scripts and reports pass or fail with raw evidence.",
+      "mode": "subagent",
+      "hidden": true,
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "deny"
+      }
+    }
+  }
+}
