@@ -46,7 +46,7 @@ Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file
 
 | # | Agent ID | Role | Mode | Permissions |
 |---|----------|------|------|-------------|
-| 1 | **`naquuubot`** | Chief of Staff / Engineering Orchestrator | `primary` | edit: allow, bash: git read-only allow / rest ask, task: naquuu-* allow |
+| 1 | **`naquuubot`** | Chief of Staff / Engineering Orchestrator | `primary` | edit: allow; bash: auto-approve (commit/push ask; destructive deny); external_directory: allow; task: naquuu-* allow |
 | 2 | **`naquuu-curator`** | Aesthetic, Taste & Persona Muse | `primary` | edit: deny, bash: deny, task: deny |
 
 ### Subagents (Hidden Specialists, Depth = 1)
@@ -91,6 +91,8 @@ opencode/deepseek drives the terminal. User handles number and QR scan privately
 
 ### Phase 3: Thin Relay + Human-Run AGY Handoff (v2, review-driven)
 **Policy (ADR-012/ADR-013)**: AGY is strictly human-operated. No agent invokes the `agy` CLI headless, automates the Antigravity UI, or reuses Antigravity credentials. Reviews confirmed the gateway's own shell/code execution is approval-gated and fail-closed; the relay must never widen that path.
+
+**Autonomy override (ADR-016)**: execution is fully autonomous on both surfaces — Hermes approvals `mode=off` with a destructive deny-list, and opencode bash auto-approve plus external file access. The independent-approval language in 3C is superseded; `git commit`/`git push` remain `ask`, and the deny-list is the last mechanical guard.
 
 **3A - Safety basics (before any relay code)**
 1. Install `.githooks/pre-commit` + `.githooks/pre-push` and set `core.hooksPath` (pulled forward from Phase 4); pre-push refuses non-fast-forward updates.

@@ -36,6 +36,10 @@ FORBIDDEN_RULES = [
         "Corporate colleague name detected (Keep personal workspace isolated from corporate context)"
     ),
     (
+        r"mapclub[-_]po",
+        "Corporate workspace identifier detected (keep the personal hub isolated)"
+    ),
+    (
         r"(['\"]?api[_-]?key['\"]?\s*[:=]\s*['\"][a-zA-Z0-9_\-]{20,}['\"])",
         "Potential hardcoded API key or private credential detected"
     ),
@@ -64,7 +68,7 @@ ALLOWED_PHONE_NUMBERS = {
     "6282112255009",
 }
 
-SCAN_EXTENSIONS = (".html", ".js", ".ts", ".jsx", ".tsx", ".json", ".md", ".py", ".css")
+SCAN_EXTENSIONS = (".html", ".js", ".ts", ".jsx", ".tsx", ".json", ".md", ".py", ".css", ".txt")
 
 def normalize_phone(raw):
     digits = re.sub(r"\D", "", raw)

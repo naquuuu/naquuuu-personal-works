@@ -235,3 +235,50 @@ This log records major technical and structural decisions made across personal p
   - Persona changes become two-file edits across surfaces, enforced by manual review until a future `verify_agent_config.py` sync check exists.
   - The human smoke test also confirms the installed AGY build lists both agents and resolves the tool-semantics open question as expected.
   - Platform gaps are explicit: AGY has no four-block enforcement, no `task` allowlists, and no model pinning (models inherit the owner-selected AGY model).
+
+---
+
+## ADR-015: Entry-Point Latency Budget (Model Pinning + Task Triage)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: Neither entry-point agent pinned a model, so fresh sessions defaulted to the free-tier `big-pickle` model with variable queue latency (observed via `opencode run`: `naquuu-curator · big-pickle`). The `naquuubot` persona also mandated the full gate → classify → plan → delegate → verify ceremony for every engineering prompt, paying multi-round-trip cost on trivial/read-only asks. Measured local costs are negligible (sanitization gate 0.30 s, `git status` 0.15 s): the latency lives in model selection and round-trip count, not workspace scripts.
+- **Decision**:
+  - Pin workspace default and small model to the paid flash tier in `opencode.jsonc` (`opencode-go/deepseek-v4.1-flash` / `opencode-go/deepseek-v4-flash`) so entry points and subagents skip the free-tier queue.
+  - Add triage to the `naquuubot` persona: trivial/read-only asks act directly; full ceremony is reserved for standard/multi-step work. The sanitization gate is a pre-commit gate (AGENTS.md Section 1), not a pre-prompt tax.
+  - Bash auto-approval with commit/push ask and destructive deny (`opencode.jsonc`), removing human-in-the-loop latency for shell commands.
+- **Consequences**:
+  - Prompt→result on this host is deterministic; hosts without `opencode-go` auth must override `model` in their global config (Phase 4 multi-host note).
+  - Free-tier fallback is no longer the default; an unavailable paid model fails closed until the user switches model in the TUI.
+  - Delegation is reserved for work that benefits from role separation, not single-step tasks.
+
+---
+
+## ADR-016: Autonomous Execution Posture (Owner Override of Review Gating)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: The review-driven plan (ADR-013) gated dangerous execution behind approvals (Hermes `approvals.mode=smart` with fail-closed unattended modes; Phase 3 3C writes requiring approval via an independent channel). The owner's usage is WhatsApp-driven work away from the laptop, where per-command approvals are impractical; on 2026-09-23 the owner directed full execution autonomy.
+- **Decision**:
+  - Hermes approvals: `mode=off`; `cron_mode`, `single_query_mode`, and `unattended_mode` set to `approve`; a destructive deny-list blocks even under autonomy: `rm -r*`, `git reset --hard*`, `git push --force*`, `git push -f*`, `git clean -*`, `git checkout -- .*`, `Remove-Item -Recurse*`, `rd /s*`, `format *`, `diskpart*`, `shutdown*`, `bcdedit*`, `reg delete*`, `*-EncodedCommand*`, `certutil -urlcache*`, `wmic*delete*`, `sc delete*`.
+  - opencode `naquuubot` and `naquuu-builder`: `external_directory` allowed for files outside the worktree, with Hermes state (`~/AppData/Local/hermes/**`) denied per the Model-Input Boundary. Bash stays auto-approved (ADR-015) with `git commit`/`git push` as `ask` and destructive denies.
+  - The independent-approval design in Phase 3 3C is superseded; relay work runs autonomously.
+  - `git commit`/`git push` remain the publication gate; force-push stays blocked by the Hermes deny-list.
+  - The Model-Input Boundary and Tier 1 secret rules remain policy-level and are not mechanically enforced once bash is auto-approved.
+- **Consequences**:
+  - WhatsApp-driven execution no longer stalls on approvals.
+  - Accepted residual risk: prompt injection or a compromised allowlisted WhatsApp account can execute arbitrary non-denied commands with the owner's rights. The deny-list and the commit/push ask are the remaining mechanical guards; the 3.1 Pro / Astra gating recommendations are knowingly overridden.
+  - The Hermes gateway must be restarted to load the approvals changes.
+
+---
+
+## ADR-017: Permission Surface Roll-Up (Zero Non-Key Prompts)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: Owner directed that shell-adjacent work (ssh, env vars), tooling installs (plugins, MCP servers, skills), and external-path access should never prompt; only commit/push stay reviewable. External-directory allow existed only on `naquuubot` and `naquuu-builder` (ADR-016), so the five specialist subagents still asked on out-of-worktree paths.
+- **Decision**:
+  - Hoist `external_directory` to top-level `permission` (`"*": "allow"`, `~/AppData/Local/hermes/**` denied); removed the two agent-level duplicates. All seven agents inherit it; agent-level blocks still take precedence elsewhere.
+  - Set `skill: "allow"` explicitly at top level (already the default, now documented).
+  - No other prompt sources exist: ssh/scp and env vars are ordinary bash (auto-approved); plugin/MCP/skill installs run through bash + edit (both auto-approved). `git commit`/`git push` stay `ask`; `doom_loop` stays the default `ask`.
+  - Per ADR-016 line on policy-level boundaries, no mechanical `.env` guard is added to bash, and the opencode destructive deny-list is not expanded to the Hermes ADR-016 list (left for owner review).
+- **Consequences**:
+  - Remaining prompts: commit/push (key decision) and doom-loop repeats (rare).
+  - All agents may read arbitrary external paths except Hermes state; accepted under ADR-016's autonomy posture.

@@ -4,8 +4,20 @@
   // No secrets, no PII. Restricted-data rule per AGENTS.md Section 3.
   // Corporate isolation: zero MAPCLUB data crosses into this workspace (ADR-003).
   "default_agent": "naquuubot",
+  // Pinned paid flash tier: avoids free-tier queue latency (ADR-015).
+  "model": "opencode-go/deepseek-v4.1-flash",
+  "small_model": "opencode-go/deepseek-v4-flash",
   "subagent_depth": 1,
   "instructions": ["AGENTS.md"],
+  // Global: external paths never prompt (Hermes state excepted); skills auto-load.
+  // Agent-level permission blocks below still take precedence.
+  "permission": {
+    "external_directory": {
+      "*": "allow",
+      "~/AppData/Local/hermes/**": "deny"
+    },
+    "skill": "allow"
+  },
   "agent": {
     "explore": { "disable": true },
     "general": { "disable": true },

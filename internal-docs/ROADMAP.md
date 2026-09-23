@@ -8,6 +8,7 @@ Backlog of personal project ideas, portfolio enhancements, and creative experime
 - [x] Establish `naquuuu` multi-repo workspace hub and single-GCP routing.
 - [ ] Connect personal Google Cloud Project ID and Gemini API Key to `.env`.
 - [ ] Portfolio UI Refresh: Integrate interactive work showcase into `naquuuu.github.io`.
+- [ ] Route personal model backends to the `naquuuu` GCP project (Generative Language API / Gemini API): Hermes, opencode, and/or AGY. Deferred placeholder (owner decision 2026-09-23); API keys are entered privately and never enter chat or the repo.
 
 ---
 
