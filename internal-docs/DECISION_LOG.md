@@ -302,22 +302,6 @@ This log records major technical and structural decisions made across personal p
 
 ---
 
-## ADR-019: Remote Access Live (Tailscale + RDP; SSH Deferred)
-- **Date**: 2026-09-23
-- **Status**: Accepted
-- **Context**: Phase 3D needed phone access to operate AGY (human-run per ADR-012) and the workspace. Tailscale was installed but its daemon wedged at `NoState` through logins, a state reset, and service restarts; a clean reinstall plus post-login warm-up fixed it. The OpenSSH Server install hung on Windows Update (likely a corporate WSUS source), so the SSH path was blocked.
-- **Decision**:
-  - Remote access = Tailscale mesh + RDP, reachable only on the Tailscale interface (built-in wide firewall rules disabled) with Network Level Authentication disabled because the account is Azure AD (`UserAuthentication=0`).
-  - SSH deferred; the two fallbacks are the Win32-OpenSSH release (no Windows Update dependency) or Tailscale's built-in SSH (`tailscale set --ssh` plus a tailnet ACL rule).
-  - `scripts/setup_remote_access.ps1` captures the full setup (OpenSSH attempt, tailnet-only firewall scoping, RDP + NLA) with transcript logging; verified live from the iPhone.
-- **Consequences**:
-  - The phone drives the full desktop, so AGY authoring is possible remotely with the owner as the operator.
-  - The laptop's local screen locks during RDP sessions (normal Windows client behavior).
-  - NLA is off, so RDP security relies on Tailscale scoping plus the account password; keep the tailnet ACLs tight.
-  - If the laptop's network blocks Tailscale (some corporate networks), remote access stops until it reconnects.
-
----
-
 ## ADR-019: DigitalOcean Managed Agents as Phase 4 Remote Execution Host and MCP Layer
 - **Date**: 2026-09-23
 - **Status**: Accepted
@@ -339,3 +323,19 @@ This log records major technical and structural decisions made across personal p
   - The Stage B gateway session runs Default Action Allow; a tighter session (read-only allow, writes ask) is required before Stage C.
   - AGENTS.md Critical Rule 3 amended in the same change.
   - Cloud Hermes (Stage D) remains out of scope until a separate risk review.
+
+---
+
+## ADR-020: Remote Access Live (Tailscale + RDP; SSH Deferred)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: Phase 3D needed phone access to operate AGY (human-run per ADR-012) and the workspace. Tailscale was installed but its daemon wedged at `NoState` through logins, a state reset, and service restarts; a clean reinstall plus post-login warm-up fixed it. The OpenSSH Server install hung on Windows Update (likely a corporate WSUS source), so the SSH path was blocked.
+- **Decision**:
+  - Remote access = Tailscale mesh + RDP, reachable only on the Tailscale interface (built-in wide firewall rules disabled) with Network Level Authentication disabled because the account is Azure AD (`UserAuthentication=0`).
+  - SSH deferred; the two fallbacks are the Win32-OpenSSH release (no Windows Update dependency) or Tailscale's built-in SSH (`tailscale set --ssh` plus a tailnet ACL rule).
+  - `scripts/setup_remote_access.ps1` captures the full setup (OpenSSH attempt, tailnet-only firewall scoping, RDP + NLA) with transcript logging; verified live from the iPhone.
+- **Consequences**:
+  - The phone drives the full desktop, so AGY authoring is possible remotely with the owner as the operator.
+  - The laptop's local screen locks during RDP sessions (normal Windows client behavior).
+  - NLA is off, so RDP security relies on Tailscale scoping plus the account password; keep the tailnet ACLs tight.
+  - If the laptop's network blocks Tailscale (some corporate networks), remote access stops until it reconnects.
