@@ -8,7 +8,7 @@ This workspace is the central engineering operating hub for personal projects, c
 
 1. **Clean git before starting**: Each child repo in `projects/` and the root hub must maintain clean working trees (`git status` clean).
 2. **Strict Corporate Isolation**: Zero MAPCLUB or corporate data, stakeholder names, or credentials allowed in this workspace. All personal code must remain strictly separated.
-3. **Single GCP Project Economy**: All personal projects, scripts, and OpenCode sessions route through the single personal Google Cloud Project (`.env` / `.vscode/settings.json`).
+3. **Single GCP Project Economy (amended by ADR-019)**: Personal model access and Tier 1 credentials route through the single personal Google Cloud Project (`.env` / `.vscode/settings.json`). DigitalOcean Managed Agents is an approved compute/execution host and MCP tool layer for Tier 2/3 work; its API token is Tier 1 and lives only in the hub `.env`. Tier 1 material never runs on DO sessions.
 4. **Pre-Commit Sanitization**: Run `python scripts/verify_sanitization.py` before committing or pushing to any public GitHub repository.
 5. **Independent Sub-Repos**: Subprojects live in `projects/<repo-slug>`. Never commit child git repositories into the root hub.
 

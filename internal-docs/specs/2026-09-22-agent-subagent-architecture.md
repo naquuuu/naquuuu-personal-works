@@ -1,8 +1,8 @@
 # Architectural Specification: Personal Agent-Subagent Architecture
 
-> **Status**: Locked Plan (final, development-focused) — Phases 1-4 complete.
+> **Status**: Locked Plan (final, development-focused) — see Section 10 for the 2026-09-23 Phase 3/4 amendment; execution status lives in DECISION_LOG.md.
 > **Date**: 2026-09-22
-> **ADR**: ADR-011 (to be written as part of Phase 1)
+> **ADR**: ADR-011 (recorded; see DECISION_LOG.md)
 
 ---
 
@@ -234,3 +234,28 @@ graph TD
 |-----|-------|------|
 | **AGY** | 1A | Author items 1-4 plus the four forward-compat amendments (`NAQUUUU_WORKSPACE` in persona files, `.githooks` path in standing rules, `HOSTS.md` stub reference in `AGENTS.md`, `host_check.py` mention in gate table). |
 | **opencode** | 2A | Begins only after user commits Stage 1D. |
+
+---
+
+## 10. Amendment: Phase 3/4 Alignment with DigitalOcean Managed Agents (2026-09-23, ADR-019)
+
+Additive amendment; Sections 1-9 above remain as written. The AGENTS.md Critical Rule 3 amendment landed with ADR-019 (decision D1 closed).
+
+**Phase 3 impact**
+
+| Item | Change | Status |
+|------|--------|--------|
+| Relay tooling | Action Gateway MCP wired into local opencode via the machine-local global config (not the repo); governed tools are available to relay tasks; credentials are brokered at execution time and never enter the sandbox | Executed 2026-09-23 |
+| Model-Input Boundary | Unchanged: the DO token is Tier 1 in hub `.env`; session URLs and OAuth tokens stay outside the repo; the T2 synthetic-secret canary test (research doc) applies to any relay/model-input path change | Unchanged |
+| Phase 3E negative tests | Remain scoped to AGY non-automation; the DO negative tests T1-T4 live in the research doc | Unchanged |
+
+**Phase 4 impact**
+
+- (a) The host topology gains a managed host class (DO Managed Agents) alongside the laptop and the planned VPS: not SSH-able; driven via doctl and the relay; no inbound connections; port-forward for dashboards; RIC1-only; preview terms (no SLA, no durability guarantees).
+- (b) Stage A (relay-dispatched DO opencode sessions) and Stage C (cron/webhook triggers) become Phase 4 execution options; Stage D (cloud Hermes gateway) is the potential replacement or complement for the VPS-hosted Hermes gateway and requires a separate risk review.
+- (c) `internal-docs/HOSTS.md`, when written, must include the managed host class, its bootstrap (doctl + token in env, gateway session, provider connections), and its relationship to the switch/failover runbook.
+- (d) `scripts/host_check.py` Phase 4 enhancement: DO readiness checks (doctl present, gate status OK, token presence without printing values).
+- (e) The VPS provisioning steps remain the fallback/standby path; the final topology decision lands in HOSTS.md.
+- (f) Standing Rule 4 note: the provider mix now includes DO Inference; the deferred `verify_agent_config.py` ADR may be due.
+
+Source: internal-docs/research/2026-09-23-do-managed-agents-phase4.md; decision: ADR-019.

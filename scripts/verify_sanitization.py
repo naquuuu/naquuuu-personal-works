@@ -48,6 +48,14 @@ FORBIDDEN_RULES = [
         "Google Gemini API Key pattern detected in plaintext"
     ),
     (
+        r"(dop_v1_[a-zA-Z0-9_\-]{16,})",
+        "Unmasked DigitalOcean access token detected (must be redacted or removed)"
+    ),
+    (
+        r"(actions\.do-ai\.run/mcp/session/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
+        "Live Action Gateway session URL detected (store only the redacted form https://actions.do-ai.run/mcp/session/<id>)"
+    ),
+    (
         r"-----BEGIN (RSA|OPENSSH|EC|DSA)? PRIVATE KEY-----",
         "Private encryption key detected"
     ),
@@ -59,7 +67,7 @@ FORBIDDEN_RULES = [
 
 ALLOWED_FILES = {
     "verify_sanitization.py", "README.md", "AGENTS.md",
-    ".env.example", "DECISION_LOG.md", "TECH_STACK.md", "ROADMAP.md"
+    "DECISION_LOG.md", "TECH_STACK.md", "ROADMAP.md"
 }
 
 # Public contact numbers the owner intentionally publishes (e.g. the blog
@@ -69,6 +77,9 @@ ALLOWED_PHONE_NUMBERS = {
 }
 
 SCAN_EXTENSIONS = (".html", ".js", ".ts", ".jsx", ".tsx", ".json", ".md", ".py", ".css", ".txt")
+
+# Tracked template files that carry no scannable extension but must still be audited.
+SCAN_FILENAMES = {".env.example"}
 
 def normalize_phone(raw):
     digits = re.sub(r"\D", "", raw)
@@ -154,7 +165,7 @@ def audit(target_dir, scan_all=False):
                 candidate_files.append(os.path.join(root, file))
 
     for fpath in candidate_files:
-        if not fpath.endswith(SCAN_EXTENSIONS):
+        if not fpath.endswith(SCAN_EXTENSIONS) and os.path.basename(fpath) not in SCAN_FILENAMES:
             continue
         if os.path.basename(fpath) in ALLOWED_FILES:
             continue

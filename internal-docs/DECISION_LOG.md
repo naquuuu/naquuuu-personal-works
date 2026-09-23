@@ -299,3 +299,27 @@ This log records major technical and structural decisions made across personal p
   - Phone requests now execute with the 7-agent roster, gates, and pinned models; evidence captured for the CLI path and the WhatsApp round-trip.
   - Job IDs remain informal; a durable queue or approval channel was superseded by the autonomy posture and can be revisited if needed.
   - The relay depends on Hermes skills discovery at session start; new skills may need a gateway restart.
+
+---
+
+## ADR-019: DigitalOcean Managed Agents as Phase 4 Remote Execution Host and MCP Layer
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: The Phase 3 relay depends on the laptop being awake (ADR-018), and Phase 4 needs a remote execution host. DigitalOcean Managed Agents entered public preview on 2026-09-21: Harness Runtime runs coding agents (OpenCode is a first-class adapter) in microVMs with pause/resume/fork and per-second billing; Action Gateway is a managed MCP endpoint (16,000+ tools; credentials brokered outside the sandbox). The staged plan and risk register live in `internal-docs/research/2026-09-23-do-managed-agents-phase4.md` (skeptic-reviewed). Stage B executed 2026-09-23: OpenCode connected to Action Gateway via OAuth, a `droplet:read` provider connection was authorized, and a read-only call returned real data at $0.00 against a $5 signup credit (`doctl harness-runtime balance`: Status OK).
+- **Decision**:
+  1. Adopt the staged integration: B (Action Gateway MCP into local opencode, done) then A (relay-dispatched DO OpenCode sessions) then C (unattended cron/webhook triggers); defer D (cloud Hermes gateway) to a separate risk review.
+  2. Scope Critical Rule 3: GCP remains the credential and model home for Tier 1; DO is an approved compute/execution host and MCP tool layer for Tier 2/3 content. Tier 1 material never runs on DO sessions. The DO API token is Tier 1 and lives only in hub `.env`.
+  3. Model inference for DO sessions is DO Inference (`HARNESS_INFERENCE_*`) or a BYO provider key; the opencode-go auth is expected not to transfer (ADR-015 multi-host note) and is verified in Stage A.
+  4. Budget: the $5 signup credit with auto top-off off; the prepaid balance is the hard stop (preview terms Section 5.14). No per-session spend limits exist.
+  5. All gates, sanitization, and commit/push stay local and are never re-hosted; no writes to the hub or child repos from Stage A or B until a commit/push policy exists for DO hosts.
+  6. Stage C triggers only with deny-by-default specs (no ask rules), no GitHub credential, bash-matcher deny rules for git push/commit/reset/clean and rm -rf, and the T1 no-push negative test passing.
+  7. Phase 3/4 alignment: the Phase 4 host topology gains a managed host class (spec Section 10); `HOSTS.md` must include it; `host_check.py` gains DO readiness checks in Phase 4; the VPS plan remains the fallback/standby path.
+  8. Sanitizer coverage: `scripts/verify_sanitization.py` now detects `dop_v1_` tokens and live Action Gateway session URLs.
+- **Consequences**:
+  - Preview risk is contained to disposable workloads; no SLA, no durability guarantees, termination at will.
+  - A second cloud credential enters the workspace (Tier 1, hub `.env` only); rotation and monitoring become workspace duties.
+  - Model routing diverges between local hosts (opencode-go pin) and DO hosts (DO Inference or BYO provider).
+  - Per-invocation Action Gateway costs add a billing dimension; the wallet is the hard stop.
+  - The Stage B gateway session runs Default Action Allow; a tighter session (read-only allow, writes ask) is required before Stage C.
+  - AGENTS.md Critical Rule 3 amended in the same change.
+  - Cloud Hermes (Stage D) remains out of scope until a separate risk review.
