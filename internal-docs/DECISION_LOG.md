@@ -284,3 +284,18 @@ This log records major technical and structural decisions made across personal p
   - Remaining prompts: commit/push (key decision) and doom-loop repeats (rare).
   - All agents may read arbitrary external paths except Hermes state; accepted under ADR-016's autonomy posture.
   - Outcome (2026-09-23): the AGY parity brief (`internal-docs/briefs/2026-09-23-agy-permission-parity.md`) closed — `.agents/agents/naquuubot.md` now runs `commandExecutionPolicy: auto` with the triage and delegation-economy wording mirrored; `eager` has no published definition in the Antigravity docs checked and was not adopted.
+
+---
+
+## ADR-018: Thin Relay v1 Implemented (WhatsApp to opencode)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: Phase 3B needed WhatsApp tasks to reach the full opencode orchestration instead of Hermes executing workspace work with its own tools. Constraints: no AGY automation (ADR-012), autonomous execution (ADR-016), commit/push stay gated (ADR-015).
+- **Decision**:
+  - Implement the relay as a Hermes local skill (`opencode-relay`, installed at `%LOCALAPPDATA%\hermes\skills\relay\opencode-relay\SKILL.md`) that runs `opencode run "<task>"` from the hub and returns trimmed output.
+  - The canonical copy and rules live in the hub at `internal-docs/relay/README.md`; re-copy after edits.
+  - Relay prompts carry no secrets; commits and pushes stay `ask`; AGY work goes through human briefs.
+- **Consequences**:
+  - Phone requests now execute with the 7-agent roster, gates, and pinned models; evidence captured for the CLI path and the WhatsApp round-trip.
+  - Job IDs remain informal; a durable queue or approval channel was superseded by the autonomy posture and can be revisited if needed.
+  - The relay depends on Hermes skills discovery at session start; new skills may need a gateway restart.
