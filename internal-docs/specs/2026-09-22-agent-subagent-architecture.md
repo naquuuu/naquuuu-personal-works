@@ -36,7 +36,7 @@ Evidence:    Four-block handoff
 ```
 
 ### Persona Precedence
-Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file is the single source of truth for voice, emoji usage, and communication style. `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences and is read by agents that need it (primarily `naquuu-curator`). The two entry-point personas also ship as Antigravity custom agents at `.agents/agents/<name>.md` (naquuubot, naquuu-curator only); `.opencode/agent/<name>.md` remains the source of truth, and persona changes must land in both surfaces in the same change (ADR-014). The five hidden subagents remain OpenCode-only.
+Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file is the single source of truth for voice, emoji usage, and communication style. `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences and is read by agents that need it (primarily `naquuuu-curator`). The two entry-point personas also ship as Antigravity custom agents at `.agents/agents/<name>.md` (naquuuubot, naquuuu-curator only); `.opencode/agent/<name>.md` remains the source of truth, and persona changes must land in both surfaces in the same change (ADR-014). The five hidden subagents remain OpenCode-only.
 
 ---
 
@@ -46,22 +46,22 @@ Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file
 
 | # | Agent ID | Role | Mode | Permissions |
 |---|----------|------|------|-------------|
-| 1 | **`naquuubot`** | Chief of Staff / Engineering Orchestrator | `primary` | edit: allow; bash: auto-approve (commit/push ask; destructive deny); external_directory: allow; task: naquuu-* allow |
-| 2 | **`naquuu-curator`** | Aesthetic, Taste & Persona Muse | `primary` | edit: deny, bash: deny, task: deny |
+| 1 | **`naquuuubot`** | Chief of Staff / Engineering Orchestrator | `primary` | edit: allow; bash: auto-approve (commit/push ask; destructive deny); external_directory: allow; task: naquuuu-* allow |
+| 2 | **`naquuuu-curator`** | Aesthetic, Taste & Persona Muse | `primary` | edit: deny, bash: deny, task: deny |
 
 ### Subagents (Hidden Specialists, Depth = 1)
 
 | # | Agent ID | Role | Mode | Permissions |
 |---|----------|------|------|-------------|
-| 3 | **`naquuu-builder`** | Software & Prototype Builder | `subagent` | edit: allow, bash: allow, task: deny |
-| 4 | **`naquuu-scribe`** | Content & Documentation Scribe | `subagent` | edit: allow, bash: deny, task: deny |
-| 5 | **`naquuu-librarian`** | Personal Knowledge Librarian | `subagent` | edit: deny, bash: deny, task: deny |
-| 6 | **`naquuu-skeptic`** | Adversarial Reviewer | `subagent` | edit: deny, bash: deny, task: deny |
-| 7 | **`naquuu-verifier`** | Quality Gatekeeper | `subagent` | edit: deny, bash: allow, task: deny |
+| 3 | **`naquuuu-builder`** | Software & Prototype Builder | `subagent` | edit: allow, bash: allow, task: deny |
+| 4 | **`naquuuu-scribe`** | Content & Documentation Scribe | `subagent` | edit: allow, bash: deny, task: deny |
+| 5 | **`naquuuu-librarian`** | Personal Knowledge Librarian | `subagent` | edit: deny, bash: deny, task: deny |
+| 6 | **`naquuuu-skeptic`** | Adversarial Reviewer | `subagent` | edit: deny, bash: deny, task: deny |
+| 7 | **`naquuuu-verifier`** | Quality Gatekeeper | `subagent` | edit: deny, bash: allow, task: deny |
 
 ### Author + Reviewer Pairing
-- **Authors**: `naquuu-builder`, `naquuu-scribe`
-- **Reviewers**: `naquuu-skeptic` (qualitative), `naquuu-verifier` (deterministic gates)
+- **Authors**: `naquuuu-builder`, `naquuuu-scribe`
+- **Reviewers**: `naquuuu-skeptic` (qualitative), `naquuuu-verifier` (deterministic gates)
 - Max 2 review cycles before human escalation.
 
 ---
@@ -73,7 +73,7 @@ Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file
 
 | # | Artifact | Owner | Notes |
 |---|----------|-------|-------|
-| 1 | `opencode.jsonc` | AGY / Opus 4.6 | `$schema`, `default_agent: "naquuubot"`, `subagent_depth: 1`, disable explore + general. No model fields, no prompts in JSON. |
+| 1 | `opencode.jsonc` | AGY / Opus 4.6 | `$schema`, `default_agent: "naquuuubot"`, `subagent_depth: 1`, disable explore + general. No model fields, no prompts in JSON. |
 | 2 | `.opencode/agent/*.md` ×7 | AGY / Opus 4.6 | Only description, mode, permission. No `model:`, no `variant:`; inherit session model. |
 | 3 | `AGENTS.md` patch | AGY / Opus 4.6 | Shared contracts once (four-block, universal prompt, persona precedence), agent column in routing table. |
 | 4 | `AGENT_PLAYBOOK.md`, `TASTE_PROFILE.md` | AGY / Sonnet 4.6 | `TASTE_PROFILE` starts as blank template. |
@@ -164,14 +164,14 @@ Tailscale mesh. SSH primary: install OpenSSH Server restricted to Tailscale. RDP
 $NAQUUUU_WORKSPACE/
 ├── opencode.jsonc                         [NEW]   Phase 1  Agent registry & permissions
 ├── .opencode/agent/                       [NEW]   Phase 1  7 agent persona/instruction files
-│   ├── naquuubot.md
-│   ├── naquuu-curator.md
-│   ├── naquuu-builder.md
-│   ├── naquuu-scribe.md
-│   ├── naquuu-librarian.md
-│   ├── naquuu-skeptic.md
-│   └── naquuu-verifier.md
-├── .agents/agents/                        [NEW]   Phase 3  AGY custom-agent mirrors (naquuubot, naquuu-curator)
+│   ├── naquuuubot.md
+│   ├── naquuuu-curator.md
+│   ├── naquuuu-builder.md
+│   ├── naquuuu-scribe.md
+│   ├── naquuuu-librarian.md
+│   ├── naquuuu-skeptic.md
+│   └── naquuuu-verifier.md
+├── .agents/agents/                        [NEW]   Phase 3  AGY custom-agent mirrors (naquuuubot, naquuuu-curator)
 ├── .githooks/                             [NEW]   Phase 3  Git hooks (pulled forward from Phase 4)
 │   ├── pre-commit                                          Runs verify_sanitization.py
 │   └── pre-push                                            Same gate + force-push refused
@@ -209,17 +209,17 @@ $NAQUUUU_WORKSPACE/
 
 ```mermaid
 graph TD
-    U["User"] -->|engineering task| NB["naquuubot"]
-    U -->|creative/taste task| NC["naquuu-curator"]
+    U["User"] -->|engineering task| NB["naquuuubot"]
+    U -->|creative/taste task| NC["naquuuu-curator"]
     NB -->|"Goal + Context"| NB_PLAN["Plan & Mermaid Diagram"]
-    NB_PLAN -->|delegate build| BUILDER["naquuu-builder"]
-    NB_PLAN -->|delegate docs| SCRIBE["naquuu-scribe"]
-    NB_PLAN -->|fetch knowledge| LIB["naquuu-librarian"]
+    NB_PLAN -->|delegate build| BUILDER["naquuuu-builder"]
+    NB_PLAN -->|delegate docs| SCRIBE["naquuuu-scribe"]
+    NB_PLAN -->|fetch knowledge| LIB["naquuuu-librarian"]
     BUILDER -->|"4-block handoff"| NB
     SCRIBE -->|"4-block handoff"| NB
     LIB -->|"4-block handoff"| NB
-    NB -->|review| SKEPTIC["naquuu-skeptic"]
-    NB -->|gate scripts| VERIFIER["naquuu-verifier"]
+    NB -->|review| SKEPTIC["naquuuu-skeptic"]
+    NB -->|gate scripts| VERIFIER["naquuuu-verifier"]
     SKEPTIC -->|"4-block handoff"| NB
     VERIFIER -->|"4-block handoff"| NB
     NB -->|synthesize & report| U

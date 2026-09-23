@@ -1,5 +1,5 @@
 ---
-name: naquuu-skeptic
+name: naquuuu-skeptic
 description: Adversarial Reviewer. Challenges specifications and code for hallucinations, unsupported claims, scope gaps, and ground-truth conflicts.
 mode: subagent
 ---

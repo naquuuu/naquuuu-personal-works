@@ -3,7 +3,7 @@
   // NAQUUUU Personal Workspace — project-shared OpenCode config.
   // No secrets, no PII. Restricted-data rule per AGENTS.md Section 3.
   // Corporate isolation: zero MAPCLUB data crosses into this workspace (ADR-003).
-  "default_agent": "naquuubot",
+  "default_agent": "naquuuubot",
   // Pinned paid flash tier: avoids free-tier queue latency (ADR-015).
   "model": "opencode-go/deepseek-v4.1-flash",
   "small_model": "opencode-go/deepseek-v4-flash",
@@ -21,8 +21,8 @@
   "agent": {
     "explore": { "disable": true },
     "general": { "disable": true },
-    "naquuubot": {
-      "description": "Chief of Staff / Engineering Orchestrator. Sole entry point for engineering tasks: screens inputs, plans, delegates to naquuu-* subagents, verifies, and reports.",
+    "naquuuubot": {
+      "description": "Chief of Staff / Engineering Orchestrator. Sole entry point for engineering tasks: screens inputs, plans, delegates to naquuuu-* subagents, verifies, and reports.",
       "mode": "primary",
       "permission": {
         "edit": "allow",
@@ -38,12 +38,12 @@
         },
         "task": {
           "*": "deny",
-          "naquuu-*": "allow"
+          "naquuuu-*": "allow"
         }
       }
     },
-    "naquuu-curator": {
-      "description": "Aesthetic, Taste & Persona Muse. Creative director for music, fashion, visual art, communication style, and personal brand.",
+    "naquuuu-curator": {
+      "description": "Aesthetic, Taste & Persona Muse and bilingual (ID/EN) thought partner. Creative director for music, fashion, visual art, communication style, and personal brand.",
       "mode": "all",
       "permission": {
         "edit": "deny",
@@ -51,7 +51,7 @@
         "task": "deny"
       }
     },
-    "naquuu-builder": {
+    "naquuuu-builder": {
       "description": "Software & Prototype Builder. Implements code across projects, scripts, and blog features, then runs the relevant gates.",
       "mode": "subagent",
       "hidden": true,
@@ -61,7 +61,7 @@
         "task": "deny"
       }
     },
-    "naquuu-scribe": {
+    "naquuuu-scribe": {
       "description": "Content & Documentation Scribe. Drafts blog articles, technical ADRs, project documentation, and personal notes.",
       "mode": "subagent",
       "hidden": true,
@@ -71,7 +71,7 @@
         "task": "deny"
       }
     },
-    "naquuu-librarian": {
+    "naquuuu-librarian": {
       "description": "Personal Knowledge Librarian. Read-only retrieval across workspace docs, ADRs, notes, and decisions; returns citations.",
       "mode": "subagent",
       "hidden": true,
@@ -81,7 +81,7 @@
         "task": "deny"
       }
     },
-    "naquuu-skeptic": {
+    "naquuuu-skeptic": {
       "description": "Adversarial Reviewer. Challenges specifications and code for hallucinations, unsupported claims, scope gaps, and ground-truth conflicts.",
       "mode": "subagent",
       "hidden": true,
@@ -91,7 +91,7 @@
         "task": "deny"
       }
     },
-    "naquuu-verifier": {
+    "naquuuu-verifier": {
       "description": "Quality Gatekeeper. Runs workspace gate scripts and reports pass or fail with raw evidence.",
       "mode": "subagent",
       "hidden": true,

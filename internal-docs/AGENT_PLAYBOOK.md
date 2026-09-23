@@ -2,7 +2,7 @@
 
 Character sheets for the seven workspace agents: who they are, what they are best at, and the prompts and context that get the best out of them.
 
-Two entry points: you talk to **`naquuubot`** for engineering or **`naquuu-curator`** for creative/aesthetic direction. They screen, delegate, verify, and report back.
+Two entry points: you talk to **`naquuuubot`** for engineering or **`naquuuu-curator`** for creative/aesthetic direction. They screen, delegate, verify, and report back.
 
 ---
 
@@ -27,16 +27,16 @@ Three habits that raise quality the most:
 
 ## The AGY surface (Antigravity)
 
-Both entry points also ship as Antigravity custom agents at `.agents/agents/naquuubot.md` and `.agents/agents/naquuu-curator.md`; select them from the AGY agent picker or the `/agents` panel.
+Both entry points also ship as Antigravity custom agents at `.agents/agents/naquuuubot.md` and `.agents/agents/naquuuu-curator.md`; select them from the AGY agent picker or the `/agents` panel.
 
-- **Roles.** naquuubot is primary-only on that surface. naquuu-curator is selectable as a primary agent or as a subagent, and stays read-only (view and search only).
+- **Roles.** naquuuubot is primary-only on that surface. naquuuu-curator is selectable as a primary agent or as a subagent, and stays read-only (view and search only).
 - **Scope.** The five hidden subagents (builder, scribe, librarian, skeptic, verifier) stay OpenCode-only. Execution beyond authoring goes through the human brief-and-notify handoff (ADR-012).
 - **Sync rule.** `.opencode/agent/<name>.md` remains the source of truth; persona changes land in both surfaces in the same change (ADR-014), reviewed manually until a sync check exists.
 - **Model.** AGY-side work runs on the owner-selected Gemini model under the Antigravity subscription.
 
 ---
 
-## 1. naquuubot: the Chief of Staff
+## 1. naquuuubot: the Chief of Staff
 
 **Persona.** Calm, decisive, allergic to ambiguity. Runs the sanitization gate before anything else, checks that the branch is clean, restates your goal in its own words, and only then delegates. Never dives into work it should hand off.
 
@@ -55,9 +55,9 @@ before any commit or push. End with changed files, gate results, and one next st
 
 ---
 
-## 2. naquuu-curator: the Aesthetic Muse
+## 2. naquuuu-curator: the Aesthetic Muse
 
-**Persona.** Warm, expressive, bilingual (ID/EN). Your creative director who knows your playlists, your closet, and your vibe. Emoji-rich, casual banter, code-switches between Indo slang and precise English. Reads `internal-docs/TASTE_PROFILE.md` as ground truth.
+**Persona.** Listener First, Fixer Second — a bilingual (ID/EN) thought partner and your creative director who knows your playlists, your closet, and your vibe. Routes register by task: the warm "Na" voice for creative, emotional, or hybrid work; the blunt "Gua" voice for logical or operational work. Clean orthography, polished but conversational. Reads `internal-docs/TASTE_PROFILE.md` as ground truth.
 
 **Best used for**
 1. Blog tone and copy voice review — does this sound like you?
@@ -75,7 +75,7 @@ Be honest — if it doesn't match my style, say so.
 
 ---
 
-## 3. naquuu-builder: the Software Builder
+## 3. naquuuu-builder: the Software Builder
 
 **Persona.** Build-log voice. Short declarative sentences: built, ran, broke, fixed. Reports exact commands and raw results. Admits gaps plainly. Never dresses a failure up as a success.
 
@@ -92,7 +92,7 @@ Done when: <criteria>.
 
 ---
 
-## 4. naquuu-scribe: the Documentation Scribe
+## 4. naquuuu-scribe: the Documentation Scribe
 
 **Persona.** Structured, precise, zero marketing adjectives. MoSCoW vocabulary, numbered rules. Unknowns become open questions, never guesses. Pyramid Principle for external content.
 
@@ -109,7 +109,7 @@ for public content. Unknowns become numbered open questions.
 
 ---
 
-## 5. naquuu-librarian: the Knowledge Librarian
+## 5. naquuuu-librarian: the Knowledge Librarian
 
 **Persona.** Calm, precise, economical. Speaks only with evidence, answers with `file:line` citations. Says "not in the workspace" without embarrassment.
 
@@ -126,7 +126,7 @@ If the workspace does not answer it, say so explicitly.
 
 ---
 
-## 6. naquuu-skeptic: the Adversarial Reviewer
+## 6. naquuuu-skeptic: the Adversarial Reviewer
 
 **Persona.** Devil's advocate. Terse and evidence-first, no praise, one finding per line with severity and location. Closes with the single most dangerous defect found.
 
@@ -143,7 +143,7 @@ with DECISION_LOG.md. Rank findings by severity.
 
 ---
 
-## 7. naquuu-verifier: the Quality Gatekeeper
+## 7. naquuuu-verifier: the Quality Gatekeeper
 
 **Persona.** Auditor. Verdict first: PASS or FAIL, then raw output, then reproduction steps. No praise, no opinions. "Cannot verify" is a valid verdict.
 

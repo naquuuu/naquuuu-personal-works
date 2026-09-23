@@ -87,8 +87,8 @@ This workspace uses a 7-agent architecture with strict role separation, structur
 
 ### Entry Points
 The user speaks only to **two** agents directly:
-- **`naquuubot`** — Chief of Staff / Engineering Orchestrator. Sole entry point for engineering tasks.
-- **`naquuu-curator`** — Aesthetic, Taste & Persona Muse. Direct access for creative, style, and taste conversations.
+- **`naquuuubot`** — Chief of Staff / Engineering Orchestrator. Sole entry point for engineering tasks.
+- **`naquuuu-curator`** — Aesthetic, Taste & Persona Muse and bilingual (ID/EN) thought partner. Direct access for creative, style, and taste conversations.
 
 All other agents are hidden subagents that never communicate with the user.
 
@@ -96,13 +96,13 @@ All other agents are hidden subagents that never communicate with the user.
 
 | Agent | Role | Writes | Permissions |
 | :--- | :--- | :--- | :--- |
-| `naquuubot` | Orchestrator (primary) | AGENTS.md, internal-docs/DECISION_LOG.md | edit, bash (auto-approve; commit/push ask; destructive deny), delegate naquuu-* |
-| `naquuu-curator` | Aesthetic Muse (primary) | — | read-only, no bash, no delegation |
-| `naquuu-builder` | Software Builder (subagent) | projects/, scripts/, blog/ | edit, bash |
-| `naquuu-scribe` | Documentation Scribe (subagent) | internal-docs/, blog/ | edit only |
-| `naquuu-librarian` | Knowledge Librarian (subagent) | — | read-only |
-| `naquuu-skeptic` | Adversarial Reviewer (subagent) | — | read-only |
-| `naquuu-verifier` | Quality Gatekeeper (subagent) | — | bash only (runs gate scripts) |
+| `naquuuubot` | Orchestrator (primary) | AGENTS.md, internal-docs/DECISION_LOG.md | edit, bash (auto-approve; commit/push ask; destructive deny), delegate naquuuu-* |
+| `naquuuu-curator` | Aesthetic Muse (primary) | — | read-only, no bash, no delegation |
+| `naquuuu-builder` | Software Builder (subagent) | projects/, scripts/, blog/ | edit, bash |
+| `naquuuu-scribe` | Documentation Scribe (subagent) | internal-docs/, blog/ | edit only |
+| `naquuuu-librarian` | Knowledge Librarian (subagent) | — | read-only |
+| `naquuuu-skeptic` | Adversarial Reviewer (subagent) | — | read-only |
+| `naquuuu-verifier` | Quality Gatekeeper (subagent) | — | bash only (runs gate scripts) |
 
 ### Shared Contracts
 
@@ -128,9 +128,9 @@ Evidence:    Four-block handoff
 ### Orchestration Rules
 - **Subagent depth**: 1. Subagents never delegate further.
 - **Concurrency**: Read-only subagents may parallelize; writers serialize per file path.
-- **Memory authority**: Only `naquuubot` edits `AGENTS.md`, `internal-docs/DECISION_LOG.md`, and core workspace docs.
+- **Memory authority**: Only `naquuuubot` edits `AGENTS.md`, `internal-docs/DECISION_LOG.md`, and core workspace docs.
 - **Workflow diagrams**: When a task runs through subagents, root presents a compact Mermaid diagram first (never ASCII box art — Section 7.4).
-- **Author + Reviewer Pairing**: `naquuu-builder` and `naquuu-scribe` author; `naquuu-skeptic` challenges qualitatively and `naquuu-verifier` runs deterministic gates; root synthesizes and reports. Max 2 review cycles before human escalation.
+- **Author + Reviewer Pairing**: `naquuuu-builder` and `naquuuu-scribe` author; `naquuuu-skeptic` challenges qualitatively and `naquuuu-verifier` runs deterministic gates; root synthesizes and reports. Max 2 review cycles before human escalation.
 
 ---
 
@@ -200,5 +200,5 @@ To ensure continuous learning across prompts and sessions, all AI agents must ob
    - Mocked test fixtures (`pytest`) to avoid hitting live servers during testing.
 6. **Dual-Format Deliverables (Lesson Learned, 2026-09-17)**: Every study-pack export is written as BOTH `.md` and `.txt` in the same run (`exports/notebook/` for `.md`, `exports/notebook_txt/` for `.txt` upload copies) — never update one without the other. Tooling defaults must produce both (e.g. `bi-scraper export-notebook`; `--no-txt` is the explicit opt-out). A format pair with mismatched timestamps or content is treated as stale and re-exported.
 7. **Workspace Root Env Var**: All scripts, agent personas, and relay skills resolve workspace root from `$NAQUUUU_WORKSPACE` (Linux) or `%NAQUUUU_WORKSPACE%` (Windows) instead of hardcoding `C:\personal\naquuuu`. Set in `.env` and host bootstrap.
-8. **Agent Architecture (ADR-011, 2026-09-22)**: 7-agent roster with two entry points (`naquuubot`, `naquuu-curator`), hidden subagents (`builder`, `scribe`, `librarian`, `skeptic`, `verifier`), four-block handoff contract, author+reviewer pairing. Personas in `.opencode/agent/*.md` (source of truth) with AGY mirrors in `.agents/agents/*.md` (ADR-014), registry in `opencode.jsonc`. See `internal-docs/AGENT_PLAYBOOK.md` for character sheets and `internal-docs/HOSTS.md` for multi-host topology (Phase 4).
+8. **Agent Architecture (ADR-011, 2026-09-22)**: 7-agent roster with two entry points (`naquuuubot`, `naquuuu-curator`), hidden subagents (`builder`, `scribe`, `librarian`, `skeptic`, `verifier`), four-block handoff contract, author+reviewer pairing. Personas in `.opencode/agent/*.md` (source of truth) with AGY mirrors in `.agents/agents/*.md` (ADR-014), registry in `opencode.jsonc`. See `internal-docs/AGENT_PLAYBOOK.md` for character sheets and `internal-docs/HOSTS.md` for multi-host topology (Phase 4).
 

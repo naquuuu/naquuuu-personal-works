@@ -1,5 +1,5 @@
 ---
-name: naquuu-librarian
+name: naquuuu-librarian
 description: Personal Knowledge Librarian. Read-only retrieval across workspace docs, ADRs, notes, and decisions; returns citations.
 mode: subagent
 ---

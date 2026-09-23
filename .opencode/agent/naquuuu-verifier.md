@@ -1,5 +1,5 @@
 ---
-name: naquuu-verifier
+name: naquuuu-verifier
 description: Quality Gatekeeper. Runs workspace gate scripts and reports pass or fail with raw evidence.
 mode: subagent
 ---

@@ -360,3 +360,32 @@ This log records major technical and structural decisions made across personal p
   - The app owner must keep active Spotify Premium (Feb 2026 Dev Mode rule) or the app stops working until resubscribed.
   - New ignored path `.secrets/` and new env var in `.env.example`; sanitization gate remains mandatory pre-commit.
   - Live `auth`/`fetch` paths are owner-run and remain unexercised until setup completes.
+
+---
+
+## ADR-022: Agent ID Standardization to naquuuu (4u)
+- **Date**: 2026-09-24
+- **Status**: Accepted
+- **Context**: The workspace brand and all repositories use the "naquuuu" (4u) spelling, but the seven agent IDs carried the 3u spelling ("naquuu-*") across both persona surfaces, config, and living docs. Owner directive (2026-09-24): the agent IDs should be naquuuu (4 u, not 3u) and the workspace updated accordingly.
+- **Decision**:
+  - Standardize all agent IDs and references to the 4u spelling: `naquuuubot`, `naquuuu-curator`, `naquuuu-builder`, `naquuuu-scribe`, `naquuuu-librarian`, `naquuuu-skeptic`, `naquuuu-verifier`; the delegation allowlist pattern becomes `naquuuu-*`.
+  - Renamed in the same change: `.opencode/agent/` (7 personas), `.agents/agents/` (2 AGY mirrors), `opencode.jsonc` (agent keys, `default_agent`, task allowlist), `AGENTS.md`, and the living internal-docs (`AGENT_PLAYBOOK.md`, the architecture spec, relay README, `SPOTIFY_INTEGRATION.md`, `TASTE_PROFILE.md`).
+  - Historical records (prior ADRs, dated briefs, research) keep their original text; this ADR is the rename note.
+- **Consequences**:
+  - Invocations use the new names from the next session (`opencode run --agent naquuuubot`; AGY agent picker); the WhatsApp relay picks up `default_agent` automatically on its next run.
+  - The Hermes-installed relay skill copy still shows the old example and needs a manual re-copy (the Hermes path is agent-denied); the canonical copy is updated at `internal-docs/relay/README.md`.
+  - External notes or pinned invocations using the 3u names must switch to 4u.
+
+---
+
+## ADR-023: naquuuu-curator Context Update (Listener First; Na/Gua Register Routing)
+- **Date**: 2026-09-24
+- **Status**: Accepted
+- **Context**: The owner supplied the curator's updated context: Listener First, Fixer Second ("solving isn't the same as loving"); dual-register voice routing — the warm "Na" voice for creative, emotional, or hybrid tasks and the blunt "Gua" voice for logical or operational tasks, with hybrids defaulting to Na; bilingual (ID/EN) South Jakarta fusion with domain vocabulary; clean orthography; cohesive rhythm, no rapid-fire micro-bursts.
+- **Decision**:
+  - Both persona surfaces (`.opencode/agent/naquuuu-curator.md`, `.agents/agents/naquuuu-curator.md`) adopt this context; the previous fragmented rapid-fire voice spec is superseded, including the same-day staged edit.
+  - Workspace mechanics are unchanged: `TASTE_PROFILE.md` ground truth, four-block handoff, read-only AGY surface, no delegation.
+  - The `AGENT_PLAYBOOK.md` character sheet and the `opencode.jsonc` agent description are updated in the same change.
+- **Consequences**:
+  - The curator's register now routes by task type; hybrid tasks default to the warm register.
+  - Two-surface mirror sync (ADR-014) is maintained in the same change.

@@ -1,6 +1,6 @@
 # Personal Taste & Persona Profile
 
-> Ground truth for `naquuu-curator` and any agent that needs to match the owner's aesthetic, tone, or style.
+> Ground truth for `naquuuu-curator` and any agent that needs to match the owner's aesthetic, tone, or style.
 > Edit this file freely — it is read by agents at task time, not baked into prompts.
 > v1 compiled from naquuuu.github.io on 2026-09-23. Fields still marked `<!-- ... -->` need owner input.
 

@@ -1,5 +1,5 @@
 ---
-name: naquuu-builder
+name: naquuuu-builder
 description: Software & Prototype Builder. Implements code across projects, scripts, and blog features, then runs the relevant gates.
 mode: subagent
 ---

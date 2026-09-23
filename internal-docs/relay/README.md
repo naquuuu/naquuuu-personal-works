@@ -1,9 +1,9 @@
 # Thin Relay (Phase 3B) - WhatsApp to opencode
 
 ## What it is
-A Hermes local skill that routes workspace engineering tasks from WhatsApp to the opencode orchestrator (naquuubot) and returns the result to the chat.
+A Hermes local skill that routes workspace engineering tasks from WhatsApp to the opencode orchestrator (naquuuubot) and returns the result to the chat.
 
-Flow: WhatsApp -> Hermes (skill: opencode-relay) -> `opencode run "<task>"` -> naquuubot -> reply.
+Flow: WhatsApp -> Hermes (skill: opencode-relay) -> `opencode run "<task>"` -> naquuuubot -> reply.
 
 ## Install path
 The live skill is installed at:
@@ -16,7 +16,7 @@ This repository keeps the canonical copy below; re-copy it to the install path a
 ```markdown
 ---
 name: opencode-relay
-description: "Route NAQUUUU workspace engineering tasks from WhatsApp to the opencode orchestrator (naquuubot) and return its result."
+description: "Route NAQUUUU workspace engineering tasks from WhatsApp to the opencode orchestrator (naquuuubot) and return its result."
 version: 1.0.0
 author: naquuuu
 license: MIT
@@ -38,7 +38,7 @@ Route engineering work in the NAQUUUU workspace to the opencode orchestrator ins
    `cd /c/personal/naquuuu`
 2. Run the task headlessly, one task per call:
    `opencode run "<task>"`
-   Optionally pin the agent: `opencode run --agent naquuubot "<task>"`
+   Optionally pin the agent: `opencode run --agent naquuuubot "<task>"`
 3. Return the agent's final output to the owner, trimmed to the essentials. For jobs longer than a minute, prefix the reply with `job <HHMM>`.
 
 ## Prompt shape

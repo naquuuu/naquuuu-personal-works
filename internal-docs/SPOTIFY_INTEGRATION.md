@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-Feeds `naquuu-curator`'s ground truth with real listening data — top artists/tracks, playlists, recently played — via a local snapshot. The snapshot is generated, not hand-curated; curator reads it at task time.
+Feeds `naquuuu-curator`'s ground truth with real listening data — top artists/tracks, playlists, recently played — via a local snapshot. The snapshot is generated, not hand-curated; curator reads it at task time.
 
 ## 2. Architecture
 
@@ -16,7 +16,7 @@ Feeds `naquuu-curator`'s ground truth with real listening data — top artists/t
 - Reads `SPOTIFY_CLIENT_ID` from the hub `.env`.
 - Stores the refresh token in `.secrets/spotify_token.json` (git-ignored, Tier 1; agents never read it).
 - `fetch` writes a sanitized snapshot to `internal-docs/SPOTIFY_SNAPSHOT.md` (contains no secrets).
-- `naquuu-curator` reads the snapshot at task time.
+- `naquuuu-curator` reads the snapshot at task time.
 - Subcommands: `auth`, `fetch`, `status`; no args prints help.
 - Requested scopes: `user-top-read user-read-recently-played playlist-read-private playlist-read-collaborative`.
 

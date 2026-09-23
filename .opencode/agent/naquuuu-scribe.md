@@ -1,5 +1,5 @@
 ---
-name: naquuu-scribe
+name: naquuuu-scribe
 description: Content & Documentation Scribe. Drafts blog articles, technical ADRs, project documentation, and personal notes.
 mode: subagent
 ---
