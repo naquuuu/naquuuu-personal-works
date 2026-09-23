@@ -357,6 +357,26 @@ Raw evidence (no secrets):
 - `doctl harness-runtime balance`: `Balance $5.00 | Month-to-date Balance -$5.00 | Auto Top-off off | Status OK`
 - `doctl balance get`: `Month-to-date Usage 0.00`
 
+## Stage 0 Execution Record (2026-09-23)
+
+Stage 0 (zero-cost guardrail verification) began the same day as Stage B. Gate 1 (deny-by-default enforcement) PASSED with live evidence. The probe used a script-mediated direct MCP call so the OAuth token never entered model context; the live session URL is not recorded here.
+
+| Step | Outcome | Evidence |
+| :--- | :--- | :--- |
+| Deny-default session created | `naquuuu-deny-probe`; Default Action Deny; Selected tools: List Droplets with Action allow; actor reused | console configuration (session URL redacted) |
+| Allowed call | `digitalocean_droplet-list` executed successfully | tool result `{"text":"[]"}` (zero droplets in the account) |
+| Forbidden read denied | `digitalocean_droplet-get` (not selected) rejected platform-side | `Tool "digitalocean_droplet-get" is denied by the session policy.` |
+| Forbidden write denied | `digitalocean_droplet-delete` (not selected) rejected platform-side | `Tool "digitalocean_droplet-delete" is denied by the session policy.` |
+| Meta-tool policy | `action_invoke` is denied by the session policy in a restricted session; only `action_search` is exposed to MCP clients, while direct tool calls are policy-evaluated | `Tool "action_invoke" is denied by the session policy.` |
+| Discovery filtering | searches for create/delete/resize returned only the allowed tool | action_search result set |
+| Enforcement locus | platform-enforced, not advisory (gate 1 satisfied) | the three denials above |
+
+Findings for later stages:
+
+- For an agent (opencode) to invoke tools inside a restricted session, either preload the allowed tools or explicitly allow `action_invoke`; otherwise the agent can only discover, not execute.
+- The superseded Allow-default session from Stage B must be deleted (teardown), and the provider connection revocation drill remains pending.
+- Remaining Stage 0 items: revocation drill, Insights opt-out verification, card cap and threshold alerts, DO account 2FA, phone-only kill drill, console snapshot (zero triggers/schedules/KBs).
+
 ## Agent Config Review Status (2026-09-23)
 
 | Item | Status |
