@@ -253,7 +253,7 @@ Additive amendment; Sections 1-9 above remain as written. The AGENTS.md Critical
 
 - (a) The host topology gains a managed host class (DO Managed Agents) alongside the laptop and the planned VPS: not SSH-able; driven via doctl and the relay; no inbound connections; port-forward for dashboards; RIC1-only; preview terms (no SLA, no durability guarantees).
 - (b) Stage A (relay-dispatched DO opencode sessions) and Stage C (cron/webhook triggers) become Phase 4 execution options; Stage D (cloud Hermes gateway) is the potential replacement or complement for the VPS-hosted Hermes gateway and requires a separate risk review.
-- (c) `internal-docs/HOSTS.md`, when written, must include the managed host class, its bootstrap (doctl + token in env, gateway session, provider connections), and its relationship to the switch/failover runbook.
+- (c) `internal-docs/HOSTS.md` (written 2026-09-23) must include the managed host class, its bootstrap (doctl + token in env, gateway session, provider connections), and its relationship to the switch/failover runbook.
 - (d) `scripts/host_check.py` Phase 4 enhancement: DO readiness checks (doctl present, gate status OK, token presence without printing values).
 - (e) The VPS provisioning steps remain the fallback/standby path; the final topology decision lands in HOSTS.md.
 - (f) Standing Rule 4 note: the provider mix now includes DO Inference; the deferred `verify_agent_config.py` ADR may be due.

@@ -279,7 +279,7 @@ All rows in this table are a "derived estimate from published rates, not measure
 
 ## Phase 4 Fit
 
-Phase 4 forward-compat state (workspace context): ADR-011 lists git hooks, `scripts/host_check.py`, and `internal-docs/HOSTS.md` as Phase 4 items. `scripts/host_check.py` exists on disk; `HOSTS.md` is referenced in AGENTS.md but does not exist on disk. (internal-docs/DECISION_LOG.md ADR-011; AGENTS.md Section 7)
+Phase 4 forward-compat state (workspace context): ADR-011 lists git hooks, `scripts/host_check.py`, and `internal-docs/HOSTS.md` as Phase 4 items. `scripts/host_check.py` and `internal-docs/HOSTS.md` both exist on disk; `HOSTS.md` was written 2026-09-23. (internal-docs/DECISION_LOG.md ADR-011; AGENTS.md Section 7)
 
 | Fit | Integration shape | Stage | Notes and risks | Source |
 | :--- | :--- | :--- | :--- | :--- |
@@ -369,7 +369,7 @@ Raw evidence (no secrets):
 | Model pin | Default `opencode-go/deepseek-v4.1-flash`; small `opencode-go/deepseek-v4-flash` (opencode.jsonc; ADR-015) |
 | Sync check | `verify_agent_config.py` still deferred (Standing Rule 4; spec line 155) |
 | DO addition | The global config now carries the action-gateway MCP entry (machine-local, outside the repo) |
-| Pending | `internal-docs/HOSTS.md` (Phase 4); `scripts/host_check.py` DO readiness checks; the deferred `verify_agent_config.py` ADR |
+| Pending | `scripts/host_check.py` DO readiness checks; the deferred `verify_agent_config.py` ADR |
 
 ## Phase 3/4 Alignment
 
