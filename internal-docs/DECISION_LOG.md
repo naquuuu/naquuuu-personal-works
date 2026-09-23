@@ -177,3 +177,61 @@ This log records major technical and structural decisions made across personal p
   - Persona changes are a single-file edit (`.opencode/agent/<name>.md` or `TASTE_PROFILE.md`) — no JSON or code changes needed.
   - Model pinning and `verify_agent_config.py` are deliberately deferred to a future ADR once the varied provider mix is settled.
   - Stage 1 verification fixes (2026-09-22): sanitizer gate now scans git-tracked files by default with an `--all` escape hatch (untracked scraped dumps caused false positives); the owner's intentionally published inquiry number is allowlisted; the email rule quantifier is bounded to avoid quadratic backtracking on scraped HTML; AGENTS.md sections renumbered so Agent Orchestration is Section 4.
+
+---
+
+## ADR-012: Thin Relay Scope: Human-Operated AGY and Remote Handoff (Phase 3)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: The owner wants heavy authoring work to consume Antigravity (AGY) subscription quota instead of Google Cloud (GCP) credits, and wants to trigger and supervise that work remotely from a phone. An earlier design considered opencode/Hermes invoking the official `agy` headless CLI (`agy -p --output-format json`) as a delegation backend.
+- **Decision**:
+  - Programmatic AGY delegation is rejected: Antigravity ToS Section 6 prohibits "using the Service in connection with products not provided by us", and the Antigravity FAQ explicitly names third-party agents (including OpenCode) as a violation, recommending Vertex/AI Studio keys for programmatic Gemini. "Human-like" UI automation was rejected as evasion.
+  - AGY stays human-operated: the owner pastes task briefs into the AGY IDE or the interactive `agy` TUI; the work consumes AGY quota directly.
+  - Brief-and-notify handoff: opencode writes briefs to `internal-docs/briefs/`; Hermes sends WhatsApp notifications and result pings only. No agent invokes AGY.
+  - Remote access: Tailscale mesh (laptop + phone, private). GUI path = RDP over Tailscale to the AGY IDE; phone-preferred path = OpenSSH Server + `agy` interactive TUI over Tailscale. No public exposure; AGY credentials and session never leave the laptop.
+  - Model roles: opencode orchestrator and all subagents inherit the session model (deepseek-v4.1-flash); Hermes uses its configured provider (Nous Portal free, interim); AGY uses the owner-selected Gemini model under the Antigravity subscription.
+  - Phase 3 tests must include negative tests proving no agent process invokes `agy` or proxies AGY.
+- **Consequences**:
+  - Heavy authoring burns AGY quota with zero terms risk; cost is one manual paste plus commit per AGY task.
+  - Tailscale is pulled forward into Phase 3 and reused by the Phase 4 host topology.
+  - If fully automated AGY usage is ever required, the sanctioned path is a Vertex/AI Studio API key (GCP billing) or a non-Google provider.
+
+---
+
+## ADR-013: Phase 3 v2 Scope (Review-Driven): Notification-First Relay, Privacy Stance, SSH+RDP
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: Two independent adversarial reviews (an external 3.1 Pro review and a low-reasoning Astral review) challenged the Phase 3 plan. Verification against the machine and vendor terms confirmed: Nous Portal's default terms grant training and third-party data rights (Privacy Mode is an opt-out); the Hermes gateway's own shell/code execution is approval-gated with a fail-closed assessor (tirith) but the gateway does not enforce the CLI's training-tier guard; git hooks were absent; Windows 10 Pro supports RDP (currently disabled); OpenSSH is not installed; agents and the owner share one Windows account, so "no AGY automation" is policy, not yet a mechanical boundary.
+- **Decision**:
+  - Adopt Phase 3 v2 in tiers: 3A safety basics before any relay (git hooks pulled forward from Phase 4, Model-Input Boundary policy, minimal `scripts/host_check.py`, brief lock convention), 3B notification/read-only relay (status and brief creation only), 3C gated writes (per-job branch, path allowlist, approval via an independent channel, protected gates), 3D human-run remote AGY (Tailscale; SSH primary, RDP optional), 3E bounded negative tests.
+  - Privacy: the owner explicitly declines Privacy Mode and accepts free-tier training for Hermes-routed chat content ("contributing to the open society"). The hard rule is unchanged: keys, credentials, phone numbers, and session tokens never enter any model context. This acceptance applies to chat content only and is a recorded exception to the Tier 1 paid-no-train preference.
+  - Remote access: both paths over Tailscale-only. Install OpenSSH Server restricted to Tailscale; enable RDP with firewall scoped to Tailscale, acknowledging it locks the local screen while connected.
+  - Isolation (separate Windows identity or VM for agents): deferred to the Phase 4 panel review; residual risk recorded here in the interim.
+  - Negative tests are bounded claims: specified agents/identities lack specified capabilities under a documented threat model, with indirect-attempt tests. No claim of absolute prevention.
+  - Supervision uses native tooling (`hermes gateway install`) plus the minimal host check; PM2/NSSM are not adopted.
+  - Two-surface persona mirroring (OpenCode + AGY) is recorded separately in ADR-014.
+- **Consequences**:
+  - Remote chat can request work but cannot execute writes until 3C guardrails exist; heavy authoring stays human-run in AGY (ADR-012).
+  - The sanitizer remains a git gate, not a model-input firewall; the Model-Input Boundary policy governs what enters model context.
+  - Separate-identity isolation remains an open Phase 4 input, with residual risk accepted in the interim.
+
+---
+
+## ADR-014: Two-Surface Persona Mirroring (OpenCode + AGY)
+- **Date**: 2026-09-23
+- **Status**: Accepted
+- **Context**: The two entry-point personas (`naquuubot`, `naquuu-curator`) existed only as OpenCode agents, so they never appeared in Antigravity 2.0's agent picker. AGY discovers custom agents exclusively from `.agents/agents/<name>.md` (workspace), `~/.gemini/config/agents/` (global), or plugin bundles — it does not read `opencode.jsonc` or `.opencode/agent/*.md`. The owner wants both surfaces to contribute to the workspace under the same orchestration discipline.
+- **Decision**:
+  - Mirror the two entry-point personas as AGY custom agents in `.agents/agents/naquuubot.md` and `.agents/agents/naquuu-curator.md`, selectable from the AGY message-box picker and `/agents` panel (`mainAgent: true`; picker support requires a build with custom agents, 2.15+).
+  - Surface-specific frontmatter: AGY `naquuubot` is `subagent: false` (orchestrator is primary-only, mirroring OpenCode `mode: primary`) and runs `commandExecutionPolicy: sandbox`; AGY `naquuu-curator` is `mainAgent: true` + `subagent: true` (mirroring OpenCode `mode: all`) with an explicit tool list of `view_file` + `grep_search`.
+  - **Open question — AGY tool semantics**: the docs table documents `tools` default as `[]` while the 2.15 changelog implies custom agents keep a default toolset unless switched off. `naquuubot` omits `tools`, betting on inherited defaults; whether curator's explicit list restricts or extends its toolset is unverified. A human picker smoke test (naquuubot can read/search/run; curator cannot edit or execute) must pass before the mirror is trusted; fallback is an explicit documented tool list on both agents.
+  - `.opencode/agent/<name>.md` stays the single source of truth; persona edits land in both surfaces in the same change.
+  - Hidden subagent roster (`builder`, `scribe`, `librarian`, `skeptic`, `verifier`) remains OpenCode-only for now; AGY-side delegation is limited to built-in subagents plus `naquuu-curator`.
+  - Human-operated AGY (ADR-012) is unchanged: no agent invokes the `agy` CLI or proxies AGY; the mirror makes the personas available inside a human-run AGY session.
+  - AGY tool lists use only documented tool names (`view_file`, `grep_search`, `run_command`, `replace_file_content`) — the docs' tool-validation known issue is why AGY tool lists stay minimal.
+  - **Open question — Standing Rule 3**: the AGY `naquuubot` runs `commandExecutionPolicy: sandbox`, which overlaps with Standing Rule 3 ("Antigravity audits text only; only OpenCode verifies runtime"); reconcile before Phase 4.
+- **Consequences**:
+  - Both IDEs can run the same entry-point personas; AGY-side work consumes AGY quota under the owner-selected Gemini model.
+  - Persona changes become two-file edits across surfaces, enforced by manual review until a future `verify_agent_config.py` sync check exists.
+  - The human smoke test also confirms the installed AGY build lists both agents and resolves the tool-semantics open question as expected.
+  - Platform gaps are explicit: AGY has no four-block enforcement, no `task` allowlists, and no model pinning (models inherit the owner-selected AGY model).

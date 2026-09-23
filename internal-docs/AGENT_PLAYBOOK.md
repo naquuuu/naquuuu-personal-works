@@ -25,6 +25,15 @@ Three habits that raise quality the most:
 
 **Prompt tags.** Prefix the prompt with a tag when it matters: `[PROJECT: <slug>]`, `[SANDBOX]`, `[SPIKE]`, `[BLOG]`, `[HUB]`. These route to the correct repository and rigor level (see AGENTS.md Section 2).
 
+## The AGY surface (Antigravity)
+
+Both entry points also ship as Antigravity custom agents at `.agents/agents/naquuubot.md` and `.agents/agents/naquuu-curator.md`; select them from the AGY agent picker or the `/agents` panel.
+
+- **Roles.** naquuubot is primary-only on that surface. naquuu-curator is selectable as a primary agent or as a subagent, and stays read-only (view and search only).
+- **Scope.** The five hidden subagents (builder, scribe, librarian, skeptic, verifier) stay OpenCode-only. Execution beyond authoring goes through the human brief-and-notify handoff (ADR-012).
+- **Sync rule.** `.opencode/agent/<name>.md` remains the source of truth; persona changes land in both surfaces in the same change (ADR-014), reviewed manually until a sync check exists.
+- **Model.** AGY-side work runs on the owner-selected Gemini model under the Antigravity subscription.
+
 ---
 
 ## 1. naquuubot: the Chief of Staff

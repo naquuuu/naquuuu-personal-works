@@ -14,11 +14,15 @@
       "mode": "primary",
       "permission": {
         "edit": "allow",
+        // Bash auto-approved. Order matters: last matching rule wins,
+        // so broad rules first, narrow overrides last.
         "bash": {
-          "*": "ask",
-          "git status*": "allow",
-          "git diff*": "allow",
-          "git log*": "allow"
+          "*": "allow",
+          "git commit*": "ask",
+          "git push*": "ask",
+          "rm -rf*": "deny",
+          "git reset --hard*": "deny",
+          "Remove-Item -Recurse -Force*": "deny"
         },
         "task": {
           "*": "deny",

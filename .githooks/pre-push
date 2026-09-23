@@ -1,0 +1,37 @@
+#!/bin/sh
+# NAQUUUU hub pre-push gate: sanitization + refuse non-fast-forward (force)
+# updates (ADR-013, pulled forward from Phase 4).
+set -e
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$repo_root" || exit 1
+
+if command -v python >/dev/null 2>&1; then
+    PY=python
+elif command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    echo "[pre-push] python not found; cannot run the sanitization gate" >&2
+    exit 1
+fi
+
+if [ -f scripts/verify_sanitization.py ]; then
+    "$PY" scripts/verify_sanitization.py || {
+        echo "[pre-push] sanitization gate failed - push blocked" >&2
+        exit 1
+    }
+fi
+
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Tolerate CRLF input (Git itself sends LF; some environments inject CR).
+    remote_sha=$(printf '%s' "$remote_sha" | tr -d '\r')
+    local_sha=$(printf '%s' "$local_sha" | tr -d '\r')
+    [ "$remote_sha" = "$zero" ] && continue
+    if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+        echo "[pre-push] non-fast-forward update to $remote_ref refused" >&2
+        exit 1
+    fi
+done
+
+exit 0

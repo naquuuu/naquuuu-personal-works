@@ -36,7 +36,7 @@ Evidence:    Four-block handoff
 ```
 
 ### Persona Precedence
-Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file is the single source of truth for voice, emoji usage, and communication style. `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences and is read by agents that need it (primarily `naquuu-curator`).
+Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file is the single source of truth for voice, emoji usage, and communication style. `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences and is read by agents that need it (primarily `naquuu-curator`). The two entry-point personas also ship as Antigravity custom agents at `.agents/agents/<name>.md` (naquuubot, naquuu-curator only); `.opencode/agent/<name>.md` remains the source of truth, and persona changes must land in both surfaces in the same change (ADR-014). The five hidden subagents remain OpenCode-only.
 
 ---
 
@@ -89,8 +89,32 @@ Each agent's persona is defined in `.opencode/agent/<name>.md`. The persona file
 ### Phase 2: Hermes Bare Pipe
 opencode/deepseek drives the terminal. User handles number and QR scan privately. Hermes data stays in `%LOCALAPPDATA%\hermes`, outside the hub. Exit check: phone "hello" gets a reply. No commits.
 
-### Phase 3: Thin Relay
-AGY / Sonnet drafts the relay skill with placeholders only; deepseek installs the plugin and runs fidelity + negative tests; AGY / Gemini 3.1 Pro High audits the raw evidence for paraphrase; ADR-012 written with that evidence; user commits.
+### Phase 3: Thin Relay + Human-Run AGY Handoff (v2, review-driven)
+**Policy (ADR-012/ADR-013)**: AGY is strictly human-operated. No agent invokes the `agy` CLI headless, automates the Antigravity UI, or reuses Antigravity credentials. Reviews confirmed the gateway's own shell/code execution is approval-gated and fail-closed; the relay must never widen that path.
+
+**3A - Safety basics (before any relay code)**
+1. Install `.githooks/pre-commit` + `.githooks/pre-push` and set `core.hooksPath` (pulled forward from Phase 4); pre-push refuses non-fast-forward updates.
+2. Model-Input Boundary policy in AGENTS.md Section 3: the sanitizer is a git gate, not a model-input firewall; add a synthetic-secret canary check for relay input paths.
+3. Minimal `scripts/host_check.py`: hub tree state, gateway singleton, bridge PID/mode drift, effective-config presence (values never printed).
+4. Brief lock convention (`internal-docs/briefs/README.md`): one writer at a time; opencode halts while a brief is active.
+
+**3B - Relay v1 (notification/read-only)**
+WhatsApp to Hermes to opencode: status queries, brief creation, and notifications only. Job IDs, sanitized status replies, no shell and no edits from chat.
+
+**3C - Writes (gated, later)**
+Per-job branch/worktree, path allowlist, expiry-bound approval through an independent channel (laptop/SSH, not WhatsApp), gates run from a protected copy, builders hold no push credentials.
+
+**3D - Remote AGY (human-run)**
+Tailscale mesh. SSH primary: install OpenSSH Server restricted to Tailscale. RDP optional: Windows 10 Pro, enable with firewall scoped to Tailscale, acknowledging it locks the local screen while connected. The owner drives the `agy` interactive TUI.
+
+**3E - Negative tests (bounded)**
+"Specified agents/identities lack specified capabilities under this documented threat model", including indirect execution attempts. No claim of absolute prevention.
+
+**Deferred**: separate Windows identity/VM isolation is a Phase 4 panel-review input; provider/local-model choice is Phase 4.
+
+**Privacy decision (ADR-013)**: the owner declines Privacy Mode and accepts free-tier training for Hermes chat content. Hard rule unchanged: keys, credentials, phone numbers, and tokens never enter model context.
+
+**Model roles (reference)**: opencode orchestrator and all subagents inherit the session model (deepseek-v4.1-flash); Hermes uses its configured provider (Nous Portal free, interim); AGY uses the owner-selected Gemini model under the Antigravity subscription.
 
 ### Phase 4: Hosting (after Phases 1-3 pass)
 
@@ -128,6 +152,7 @@ AGY / Sonnet drafts the relay skill with placeholders only; deepseek installs th
 3. Only opencode verifies opencode runtime; Antigravity audits text only.
 4. Model pinning and `verify_agent_config.py` are deliberately deferred to a future ADR once the varied provider mix is settled.
 5. All paths use `$NAQUUUU_WORKSPACE` (or `%NAQUUUU_WORKSPACE%` on Windows) instead of hardcoded `C:\personal\naquuuu`. Agent persona files, relay skills, and host scripts resolve workspace root from this env var.
+6. **AGY is human-operated** (ADR-012): agents never invoke the Antigravity CLI, automate its UI, or reuse its credentials; agents prepare briefs in `internal-docs/briefs/` and Hermes notifies only.
 
 ---
 
@@ -144,19 +169,21 @@ $NAQUUUU_WORKSPACE/
 │   ├── naquuu-librarian.md
 │   ├── naquuu-skeptic.md
 │   └── naquuu-verifier.md
-├── .githooks/                             [NEW]   Phase 4  Git hooks (core.hooksPath)
+├── .agents/agents/                        [NEW]   Phase 3  AGY custom-agent mirrors (naquuubot, naquuu-curator)
+├── .githooks/                             [NEW]   Phase 3  Git hooks (pulled forward from Phase 4)
 │   ├── pre-commit                                          Runs verify_sanitization.py
 │   └── pre-push                                            Same gate + force-push refused
 ├── AGENTS.md                              [MODIFY] Phase 1  Add agent orchestration section
 ├── internal-docs/
 │   ├── AGENT_PLAYBOOK.md                  [NEW]   Phase 1  Character sheets & delegation patterns
+│   ├── briefs/                            [NEW]   Phase 3  Task briefs for human-run AGY sessions
 │   ├── TASTE_PROFILE.md                   [NEW]   Phase 1  Blank template for aesthetic preferences
 │   ├── HOSTS.md                           [NEW]   Phase 4  Topology, bootstrap, switch runbook
-│   └── DECISION_LOG.md                    [MODIFY] Phase 1  ADR-011; Phase 3 ADR-012
+│   └── DECISION_LOG.md                    [MODIFY] Phase 1  ADR-011 to ADR-014 (append-only)
 ├── scripts/
 │   ├── sync_all_repos.py                  [MODIFY] Phase 1  Fix exit-0-when-dirty + --strict
 │   ├── verify_sanitization.py             [MODIFY] Phase 1  Add missing phone regex rule
-│   └── host_check.py                      [NEW]   Phase 4  Cross-platform host readiness
+│   └── host_check.py                      [NEW]   Phase 3 (minimal; expanded in Phase 4)  Cross-platform host readiness
 └── .gitignore                             [MODIFY] Phase 1  Add !.opencode/agent/ negation
 ```
 

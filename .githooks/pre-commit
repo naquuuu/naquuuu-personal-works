@@ -1,0 +1,25 @@
+#!/bin/sh
+# NAQUUUU hub pre-commit gate: sanitization before any commit (ADR-013, pulled
+# forward from Phase 4). Blocks the commit if the sanitizer reports violations.
+set -e
+
+repo_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$repo_root" || exit 1
+
+if command -v python >/dev/null 2>&1; then
+    PY=python
+elif command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    echo "[pre-commit] python not found; cannot run the sanitization gate" >&2
+    exit 1
+fi
+
+if [ -f scripts/verify_sanitization.py ]; then
+    "$PY" scripts/verify_sanitization.py || {
+        echo "[pre-commit] sanitization gate failed - commit blocked" >&2
+        exit 1
+    }
+fi
+
+exit 0

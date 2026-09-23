@@ -72,11 +72,18 @@ To ensure all AI agents route tasks to the correct repository and enforce approp
 
 **Forbidden**: Storing corporate business data, enterprise credentials, or internal company architectures in this workspace.
 
+### Model-Input Boundary
+The sanitization gate audits git-tracked content; it is **not** a model-input firewall. Rules for what may enter any agent or model context:
+1. Tier 1 material (keys, passwords, session tokens, phone numbers, credential files) never enters model context — not via files, terminal output, tool errors, attachments, or chat.
+2. Hub `.env` and Hermes state (`%LOCALAPPDATA%\hermes`, `~/.hermes`) are out of bounds for agent reads.
+3. Briefs and relay payloads carry Tier 2 content only; strip sender identifiers and metadata where possible.
+4. Changes to relay or model-input paths require a synthetic-secret canary check before rollout.
+
 ---
 
 ## 4. Agent Orchestration (Root First)
 
-This workspace uses a 7-agent architecture with strict role separation, structured handoffs, and deterministic gates. Agent personas live in `.opencode/agent/*.md`; permissions and registry in `opencode.jsonc`.
+This workspace uses a 7-agent architecture with strict role separation, structured handoffs, and deterministic gates. Agent personas live in `.opencode/agent/*.md`; permissions and registry in `opencode.jsonc`. The two entry-point personas are also mirrored as Antigravity custom agents in `.agents/agents/*.md` (ADR-014).
 
 ### Entry Points
 The user speaks only to **two** agents directly:
@@ -89,7 +96,7 @@ All other agents are hidden subagents that never communicate with the user.
 
 | Agent | Role | Writes | Permissions |
 | :--- | :--- | :--- | :--- |
-| `naquuubot` | Orchestrator (primary) | AGENTS.md, internal-docs/DECISION_LOG.md | edit, bash (git read-only), delegate naquuu-* |
+| `naquuubot` | Orchestrator (primary) | AGENTS.md, internal-docs/DECISION_LOG.md | edit, bash (auto-approve; commit/push ask; destructive deny), delegate naquuu-* |
 | `naquuu-curator` | Aesthetic Muse (primary) | — | read-only, no bash, no delegation |
 | `naquuu-builder` | Software Builder (subagent) | projects/, scripts/, blog/ | edit, bash |
 | `naquuu-scribe` | Documentation Scribe (subagent) | internal-docs/, blog/ | edit only |
@@ -116,7 +123,7 @@ Constraints: <In-scope / out-of-scope>
 Evidence:    Four-block handoff
 ```
 
-**Persona Precedence**: Each agent's `.opencode/agent/<name>.md` is the single source of truth for voice, emoji usage, and communication style. `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences.
+**Persona Precedence**: Each agent's `.opencode/agent/<name>.md` is the single source of truth for voice, emoji usage, and communication style; its AGY mirror in `.agents/agents/<name>.md` must match it (ADR-014; manual review until a sync check lands). `internal-docs/TASTE_PROFILE.md` is the ground truth for aesthetic preferences.
 
 ### Orchestration Rules
 - **Subagent depth**: 1. Subagents never delegate further.
@@ -193,5 +200,5 @@ To ensure continuous learning across prompts and sessions, all AI agents must ob
    - Mocked test fixtures (`pytest`) to avoid hitting live servers during testing.
 6. **Dual-Format Deliverables (Lesson Learned, 2026-09-17)**: Every study-pack export is written as BOTH `.md` and `.txt` in the same run (`exports/notebook/` for `.md`, `exports/notebook_txt/` for `.txt` upload copies) — never update one without the other. Tooling defaults must produce both (e.g. `bi-scraper export-notebook`; `--no-txt` is the explicit opt-out). A format pair with mismatched timestamps or content is treated as stale and re-exported.
 7. **Workspace Root Env Var**: All scripts, agent personas, and relay skills resolve workspace root from `$NAQUUUU_WORKSPACE` (Linux) or `%NAQUUUU_WORKSPACE%` (Windows) instead of hardcoding `C:\personal\naquuuu`. Set in `.env` and host bootstrap.
-8. **Agent Architecture (ADR-011, 2026-09-22)**: 7-agent roster with two entry points (`naquuubot`, `naquuu-curator`), hidden subagents (`builder`, `scribe`, `librarian`, `skeptic`, `verifier`), four-block handoff contract, author+reviewer pairing. Personas in `.opencode/agent/*.md`, registry in `opencode.jsonc`. See `internal-docs/AGENT_PLAYBOOK.md` for character sheets and `internal-docs/HOSTS.md` for multi-host topology (Phase 4).
+8. **Agent Architecture (ADR-011, 2026-09-22)**: 7-agent roster with two entry points (`naquuubot`, `naquuu-curator`), hidden subagents (`builder`, `scribe`, `librarian`, `skeptic`, `verifier`), four-block handoff contract, author+reviewer pairing. Personas in `.opencode/agent/*.md` (source of truth) with AGY mirrors in `.agents/agents/*.md` (ADR-014), registry in `opencode.jsonc`. See `internal-docs/AGENT_PLAYBOOK.md` for character sheets and `internal-docs/HOSTS.md` for multi-host topology (Phase 4).
 
