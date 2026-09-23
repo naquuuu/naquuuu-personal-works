@@ -255,7 +255,11 @@ Additive amendment; Sections 1-9 above remain as written. The AGENTS.md Critical
 - (b) Stage A (relay-dispatched DO opencode sessions) and Stage C (cron/webhook triggers) become Phase 4 execution options; Stage D (cloud Hermes gateway) is the potential replacement or complement for the VPS-hosted Hermes gateway and requires a separate risk review.
 - (c) `internal-docs/HOSTS.md` (written 2026-09-23) must include the managed host class, its bootstrap (doctl + token in env, gateway session, provider connections), and its relationship to the switch/failover runbook.
 - (d) `scripts/host_check.py` Phase 4 enhancement: DO readiness checks (doctl present, gate status OK, token presence without printing values).
-- (e) The VPS provisioning steps remain the fallback/standby path; the final topology decision lands in HOSTS.md.
+- (e) Per the decoupled decision (2026-09-23, ADR-019 amendment), the VPS becomes the relay host (Tailscale + systemd) while the laptop remains the hub and authority; the VPS also remains the failover/standby target for a switch drill. The final topology decision lands in HOSTS.md.
 - (f) Standing Rule 4 note: the provider mix now includes DO Inference; the deferred `verify_agent_config.py` ADR may be due.
 
 Source: internal-docs/research/2026-09-23-do-managed-agents-phase4.md; decision: ADR-019.
+
+### Sub-amendment (2026-09-23b): Five-Review Outcome and Decoupled Topology
+
+Five independent adversarial reviews of the Stage B evidence (Opus 4.6, 3.8 Flash High, 3.1 Pro High, Muse Spark 1.3, Big Pickle) reached consensus: stop before Stage A; Stage B proved connectivity, not controls. Stage A remains blocked until the gate set passes (recorded in ADR-019 amendment and HOSTS.md Section 9). The owner approved a decoupled topology: the relay moves to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability; DO Managed Agents is a sandboxed worker only, used after the gates pass. Stage D remains deferred. New standing requirements: deny-default sessions with a rejected-call proof; egress allowlist; bash denied for read-only jobs; server-side branch protection as the no-push backstop; ingestion gate for DO artifacts; induced-push prohibition in relay instructions; kill switch reachable without the laptop.

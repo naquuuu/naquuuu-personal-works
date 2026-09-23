@@ -1,7 +1,7 @@
 # Host Topology and Switch Runbook (HOSTS.md)
 
 - Date: 2026-09-23
-- Status: Phase 4 in progress. The laptop is the active primary. DigitalOcean Managed Agents is an approved managed execution host (ADR-019). The VPS remains the planned fallback/standby.
+- Status: Phase 4 in progress. The laptop is the active primary. DigitalOcean Managed Agents is an approved managed execution host (ADR-019). The VPS is the planned relay host (decoupled decision, ADR-019 amendment); the laptop remains the hub and authority.
 - Scope: host classes, topology, credential boundaries, bootstrap, authority, switch/failover, readiness, and remote access.
 - Related: spec Sections 4 and 10; ADR-011 through ADR-020; the Phase 4 research doc.
 
@@ -9,12 +9,14 @@
 
 The laptop is the only host with runtime authority today. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The VPS is planned and not provisioned. The phone is a client only.
 
+The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the relay moves to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability, while DO Managed Agents is used only as a sandboxed worker after the Phase 4 gate set passes. A preview failure on DO cannot take the relay down.
+
 ```mermaid
 flowchart LR
   P["Phone (client only)"]
   L["Laptop (active primary): opencode roster, Hermes gateway, hooks, doctl"]
   D["DO Managed Agents (RIC1, preview): Harness Runtime, Action Gateway"]
-  V["VPS (planned fallback/standby)"]
+  V["VPS (planned relay host)"]
   P -->|"WhatsApp via Hermes"| L
   P -->|"Tailscale SSH/RDP"| L
   L -->|"doctl harness-runtime (sessions, files, port-forward)"| D
@@ -26,8 +28,8 @@ flowchart LR
 | Host | Class | What runs there | Authority | Access path | Current status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Laptop | Primary, self-hosted | opencode with the 7-agent roster; Hermes gateway and WhatsApp bridge; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface) | Holds runtime authority today | Local console; Tailscale SSH/RDP from the phone | Active; host_check READY (5 PASS, 1 WARN, 0 FAIL) |
-| DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven; Stage A and C planned; Stage D deferred; RIC1 only; preview terms |
-| VPS | Planned fallback/standby | opencode + Hermes (planned); runtime clone; `opencode serve` on loopback/Tailscale; Hermes under systemd | None today; becomes primary after a switch drill | Tailscale (planned) | Not provisioned |
+| DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven (connectivity only); Stage A blocked until the Phase 4 gate set passes (Section 9); sandboxed worker only; RIC1; preview terms |
+| VPS | Planned relay host (decoupled decision) | opencode + Hermes (planned); runtime clone; `opencode serve` on loopback/Tailscale; Hermes under systemd | None today; becomes primary after a switch drill | Tailscale (planned) | Not provisioned |
 | Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH/RDP to the laptop | In use |
 
 ## 3. Credential and Data Boundaries
@@ -141,3 +143,20 @@ Snapshot 2026-09-23: `SUMMARY: 5 PASS, 1 WARN, 0 FAIL`, `RESULT: READY (with war
 - `internal-docs/relay/README.md`.
 - `internal-docs/AGENT_PLAYBOOK.md`.
 - `scripts/setup_remote_access.ps1` (tracked; captures the remote-access setup with transcript logging).
+
+## 9. Phase 4 Gate Set (five-review panel, 2026-09-23)
+
+Five independent adversarial reviews (Opus 4.6, 3.8 Flash High, 3.1 Pro High, Muse Spark 1.3, Big Pickle) reviewed the Stage B evidence. Consensus: STOP before Stage A; Stage B proved connectivity, not controls. Stage A is blocked until all gates pass with evidence.
+
+| Gate | Requirement | Status |
+| :--- | :--- | :--- |
+| 1 | Deny-default session created and a forbidden call demonstrably rejected platform-side; tool list pinned; meta-tool discovery disabled | Documented as supported; console probe pending |
+| 2 | Enforcement locus confirmed (platform-enforced, not advisory) | Pending |
+| 3 | Token scope inventory + revocation drill + storage without env-var/argv exposure + separate admin/agent identity | Pending |
+| 4 | Model backend verified (which model sessions call; key pinnable) | Pending |
+| 5 | Spend controls: autorecharge OFF (recorded), card cap, threshold alerts, billing-lag re-measure, relay turn/time budgets, kill switch reachable without the laptop | Partially recorded |
+| 6 | Server-side no-push backstop (branch protection) + IAM minimality + egress allowlist + WhatsApp/fetch egress scanning; client-side deny rules are defense-in-depth only | Pending |
+| 7 | Insights opt-out verified before any data transits | Pending |
+| 8 | Ingestion gate: DO artifacts treated as untrusted patches; manual review + sanitization before the laptop tree; no auto-pull | Policy recorded; enforcement pending |
+
+Stage 0 (zero-cost probes) is approved and in progress. No triggers or schedules may exist in Stages A/C.
