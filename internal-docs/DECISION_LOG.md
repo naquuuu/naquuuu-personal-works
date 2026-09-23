@@ -282,3 +282,4 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Remaining prompts: commit/push (key decision) and doom-loop repeats (rare).
   - All agents may read arbitrary external paths except Hermes state; accepted under ADR-016's autonomy posture.
+  - Outcome (2026-09-23): the AGY parity brief (`internal-docs/briefs/2026-09-23-agy-permission-parity.md`) closed — `.agents/agents/naquuubot.md` now runs `commandExecutionPolicy: auto` with the triage and delegation-economy wording mirrored; `eager` has no published definition in the Antigravity docs checked and was not adopted.
