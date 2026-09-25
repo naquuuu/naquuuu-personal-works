@@ -13,8 +13,8 @@ The live skill is installed at:
 
 This repository keeps the canonical copy below; re-copy it to the install path after edits.
 
-## VPS relay (Linux, planned)
-Planned host: Tencent Cloud Lighthouse 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS (purchase in progress). The canonical Linux skill copy and the full provisioning steps live in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; the Windows skill below remains canonical for the laptop.
+## VPS relay (Linux, live)
+Live host: Tencent Cloud Lighthouse 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS. The VPS is the live relay host (M1 complete 2026-09-25, ADR-026): Hermes gateway (systemd user service, linger enabled) + WhatsApp bridge (bot mode) + opencode 1.18.32 (`opencode-go` auth) + workspace clone at `~/naquuuu`. The WhatsApp session was copied from the laptop; a repo-scoped ed25519 deploy key makes the VPS a scoped writer. The laptop's gateway is stopped and its session copy is retained as rollback. The canonical Linux skill copy, the full provisioning steps, and the as-executed gotchas live in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; the Windows skill below remains canonical for the laptop.
 
 ## Skill content
 

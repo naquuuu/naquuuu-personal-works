@@ -1,35 +1,38 @@
 # Host Topology and Switch Runbook (HOSTS.md)
 
 - Date: 2026-09-23
-- Status: Phase 4 in progress. The laptop is the active primary. DigitalOcean Managed Agents is an approved managed execution host (ADR-019). The VPS is the planned relay host (decoupled decision, ADR-019 amendment); the laptop remains the hub and authority.
+- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
 - Scope: host classes, topology, credential boundaries, bootstrap, authority, switch/failover, readiness, and remote access.
-- Related: spec Sections 4 and 10; ADR-011 through ADR-020; the Phase 4 research doc.
+- Related: spec Sections 4 and 10; ADR-011 through ADR-026; the Phase 4 research doc.
 
 ## 1. Topology Overview
 
-The laptop is the only host with runtime authority today. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The VPS is planned and not provisioned. The phone is a client only.
+The VPS is the live relay host (M1 complete 2026-09-25, ADR-026) and a repo-scoped writer; the laptop remains a workstation/co-writer. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The phone is a client only. Node trees converge through the ADR-025 auto-sync.
 
-The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the relay moves to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability, while DO Managed Agents is used only as a sandboxed worker after the Phase 4 gate set passes. A preview failure on DO cannot take the relay down.
+The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the relay moved to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability, while DO Managed Agents is used only as a sandboxed worker after the Phase 4 gate set passes. A preview failure on DO cannot take the relay down.
 
 ```mermaid
 flowchart LR
   P["Phone (client only)"]
-  L["Laptop (active primary): opencode roster, Hermes gateway, hooks, doctl"]
+  L["Laptop (workstation/co-writer): opencode roster, hooks, doctl; gateway stopped"]
   D["DO Managed Agents (RIC1, preview): Harness Runtime, Action Gateway"]
-  V["VPS (planned relay host)"]
-  P -->|"WhatsApp via Hermes"| L
+  V["VPS (live relay host, scoped writer): Hermes gateway, WhatsApp bridge, opencode, clone"]
+  H["Home-server laptop mipad-linux (synced replica; M2 worker candidate)"]
+  P -->|"WhatsApp via Hermes"| V
   P -->|"Tailscale SSH/RDP"| L
   L -->|"doctl harness-runtime (sessions, files, port-forward)"| D
-  L -.->|"planned failover target"| V
+  L <-->|"auto-sync (10 min / 5 min)"| V
+  V <-->|"auto-sync (5 min)"| H
 ```
 
 ## 2. Host Classes
 
 | Host | Class | What runs there | Authority | Access path | Current status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Laptop | Primary, self-hosted | opencode with the 7-agent roster; Hermes gateway and WhatsApp bridge; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface) | Holds runtime authority today | Local console; Tailscale SSH/RDP from the phone | Active; host_check READY (5 PASS, 1 WARN, 0 FAIL) |
+| Laptop | Workstation, self-hosted | opencode with the 7-agent roster; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface). Hermes gateway stopped; the local WhatsApp session copy is retained as rollback | Workstation/co-writer; relay authority moved to the VPS | Local console; Tailscale SSH/RDP from the phone | Active; relay moved off it (gateway stopped) |
 | DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven (connectivity only); Stage A blocked until the Phase 4 gate set passes (Section 9); sandboxed worker only; RIC1; preview terms |
-| VPS | Planned relay host (decoupled decision) | opencode + Hermes (planned); runtime clone; `opencode serve` on loopback/Tailscale; Hermes under systemd | None today; becomes primary after a switch drill | Tailscale (planned) | Purchase in progress (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); see `internal-docs/relay/VPS_RELAY_RUNBOOK.md` |
+| VPS | Live relay host (decoupled decision); scoped writer | Hermes gateway (systemd user service, linger enabled) + WhatsApp bridge (bot mode) + opencode 1.18.32 (`opencode-go` auth) + workspace clone at `~/naquuuu` | Holds relay authority; repo-scoped write via ed25519 deploy key ("vps-relay (M1)") | Tailscale; SSH key-only | Live (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); WhatsApp tasks verified end-to-end; see `internal-docs/relay/VPS_RELAY_RUNBOOK.md` |
+| Home-server laptop (`mipad-linux`) | Synced replica; M2 worker candidate | opencode 1.18.32; workspace clone; auto-sync (systemd user timer, 5 min); Tailscale; i5-8250U / 8 GB RAM / 219 GB NVMe, Ubuntu 24.04 | None today (replica; no relay) | Tailscale | Onboarded; owner follow-ups pending (`opencode auth login`, reboot) |
 | Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH/RDP to the laptop | In use |
 
 ## 3. Credential and Data Boundaries
@@ -66,26 +69,27 @@ flowchart LR
 6. Config: the action-gateway MCP entry lives only in the machine-local global config; never upload `.env`; never commit the config.
 7. Constraints: RIC1 only; no inbound connections; port-forward for dashboards; preview terms (no SLA, no durability guarantees, termination at will).
 
-### 4.3 VPS (planned, per spec Phase 4 step 2)
+### 4.3 VPS (executed — live relay host, per spec Phase 4 step 2)
 
-Execution runbook: `internal-docs/relay/VPS_RELAY_RUNBOOK.md` (M1 build ready; supersedes this list where they differ).
+Status: executed 2026-09-25 (M1 complete, ADR-026). Execution runbook: `internal-docs/relay/VPS_RELAY_RUNBOOK.md` (M1 execution details and gotchas live there; supersedes this list where they differ).
 
 1. Provision opencode + Hermes on the VPS.
 2. Clone the runtime workspace.
 3. Provider auth; Hermes gets its own provider key in the host env (never in the repo).
 4. Run `opencode serve` bound to loopback/Tailscale with `OPENCODE_SERVER_PASSWORD`.
-5. Run the Hermes gateway under systemd.
-6. Re-pair WhatsApp with the dedicated number.
+5. Run the Hermes gateway under systemd (user service; linger enabled).
+6. Move the WhatsApp session from the laptop (laptop copy retained as rollback); re-pair only if the copied session is rejected.
 7. Run the readiness checks, then a switch drill (Section 5).
 
 ## 5. Authority and Switches
 
 ### 5.1 Authority model
 
-- The laptop holds runtime authority today.
+- The VPS holds relay authority (live relay host) and is a scoped writer (repo-scoped deploy key); the laptop remains a workstation/co-writer.
 - DO sessions are disposable and never hold authority.
-- Commit, push, and gates stay local and are never re-hosted.
-- One writer per tree (Standing Rule 1); commit at every IDE handoff.
+- Commits stay gate-protected: auto-sync runs `scripts/verify_sanitization.py` before commit and push (ADR-025); gates are never re-hosted to DO.
+- One WhatsApp bridge at a time (after `hermes gateway stop`, verify port 3000 is free before starting another host).
+- One writer per tree (Standing Rule 1, amended by ADR-025: nodes converge through auto-sync, one thread at a time); commit at every IDE handoff.
 
 ### 5.2 Switch procedure (spec Phase 4)
 
@@ -140,7 +144,7 @@ Snapshot 2026-09-23: `SUMMARY: 5 PASS, 1 WARN, 0 FAIL`, `RESULT: READY (with war
 ## 8. References
 
 - `internal-docs/specs/2026-09-22-agent-subagent-architecture.md`, Sections 4 and 10.
-- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-020.
+- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-026.
 - `internal-docs/research/2026-09-23-do-managed-agents-phase4.md`.
 - `internal-docs/relay/README.md`.
 - `internal-docs/AGENT_PLAYBOOK.md`.

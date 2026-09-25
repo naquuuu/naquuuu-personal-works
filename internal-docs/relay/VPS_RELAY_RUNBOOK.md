@@ -1,10 +1,10 @@
 # VPS Relay Runbook (M1)
 
 - Purpose: provision the always-on VPS relay so the WhatsApp front door survives the laptop being off.
-- Status: M1 build ready; host purchase in progress — 2026-09-24.
-- Related: `internal-docs/HOSTS.md` §4.3, §5.2, §5.4; `internal-docs/DECISION_LOG.md` ADR-019 amendment; `internal-docs/relay/README.md`.
+- Status: M1 complete (2026-09-25): relay hosted on the VPS; verified from WhatsApp.
+- Related: `internal-docs/HOSTS.md` §4.3, §5.2, §5.4; `internal-docs/DECISION_LOG.md` ADR-019 amendment, ADR-025, ADR-026; `internal-docs/relay/README.md`.
 - Scope: M1 = the relay survives the laptop being off (WhatsApp front door always on).
-- Non-goals for M1: no repo writes or pushes from the VPS (one writer per tree, commits stay gated); heavy dev-task execution on the VPS is M2; DO Managed Agents stays behind the Phase 4 gate set (`HOSTS.md` §9).
+- Non-goals for M1: heavy dev-task execution on the VPS is M2; DO Managed Agents stays behind the Phase 4 gate set (`HOSTS.md` §9). M1 landed a repo-scoped ed25519 deploy key, so the VPS writes (scoped) under gate-protected auto-sync (ADR-025, ADR-026).
 
 ## Target host
 
@@ -68,7 +68,7 @@ curl -fsSL https://opencode.ai/install | bash
 git clone https://github.com/naquuuu/naquuuu-personal-works.git ~/naquuuu
 ```
 
-- The repo is public: read-only clone, no credentials on the box.
+- The repo is public; the clone started read-only, then the remote was switched to SSH with the repo-scoped deploy key (see Gotchas). opencode 1.18.32 with `opencode-go` auth.
 - Owner-side provider auth for opencode.
 - Smoke test (no writes, no commits): `cd ~/naquuuu && opencode run --agent naquuuubot "Reply with the current branch."`
 
@@ -107,6 +107,13 @@ flowchart LR
 2. Restore the laptop session copy if needed.
 3. Start the laptop gateway.
 4. Verify with a phone "hello".
+
+## Gotchas (as executed)
+
+- Only one WhatsApp bridge at a time: after `hermes gateway stop`, an orphaned `bridge.js` can survive; verify port 3000 is free before starting another host.
+- The WhatsApp env transfer must include `WHATSAPP_ENABLED`; a filtered copy missed it and the bridge stayed off.
+- Run `npm install` in the bridge directory before the first VPS start.
+- The deploy key makes the VPS a scoped writer: the clone remote was switched to SSH (`git@github.com:...`); a push was verified (`Everything up-to-date`). Scope is that one repository; revocable from the repo's Deploy keys page.
 
 ## Security notes
 
@@ -169,6 +176,6 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 - Never include secrets, phone numbers, keys, or tokens in the prompt.
 - `git commit` and `git push` are gated: report changed files and tell the owner a commit needs approval.
 - One task per run; no chained mega-prompts.
-- M1: no pushes from this host; heavy dev work may wait for the laptop or M2.
+- M1: this host is a scoped writer (repo-scoped deploy key); commits and pushes stay gate-protected via auto-sync; heavy dev work may wait for the laptop or M2.
 - If `opencode run` fails, return the error lines only.
 ```

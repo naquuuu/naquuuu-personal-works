@@ -423,3 +423,20 @@ This log records major technical and structural decisions made across personal p
   - Commit history gains `chore(sync): <host> <timestamp>` entries; the public repo mirrors the workspace within ~10 minutes.
   - A failed sanitization gate blocks the commit/push (by design); a rebase conflict stops the sync and leaves the tree for manual review.
   - The laptop is no longer the sole writer; the VPS can push once the deploy key lands, and the home server joins as a replica/worker node.
+
+---
+
+## ADR-026: M1 Complete — Relay Hosted on the VPS (Scoped Writer)
+- **Date**: 2026-09-25
+- **Status**: Accepted (verified live from WhatsApp)
+- **Context**: The decoupled topology (ADR-019 amendment) planned the relay on a plain VPS, with the laptop remaining the hub. M1 required the WhatsApp front door to survive the laptop being off. The VPS (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04) now runs Hermes, the WhatsApp bridge, opencode, and a workspace clone.
+- **Decision**:
+  1. The VPS is the **live relay host**: the WhatsApp session was copied from the laptop (laptop copy retained as rollback); the gateway runs as a systemd user service with lingering enabled.
+  2. The VPS is a **scoped writer**: a repo-scoped ed25519 deploy key (write enabled) is registered on GitHub and installed on the VPS; the clone's remote is SSH. Scope is that one repository; revocable from the repo's Deploy keys page.
+  3. All host trees converge through the ADR-025 auto-sync (laptop Scheduled Task; VPS and home-server systemd user timers).
+  4. The **laptop** remains a workstation/co-writer; its Hermes gateway is stopped and its session copy is the rollback path.
+  5. Two independent model layers: the Hermes assistant runs on Nous Portal; the opencode worker runs on `opencode-go` (pinned in `opencode.jsonc`).
+- **Consequences**:
+  - The relay survives the laptop being off; WhatsApp tasks run against the VPS clone and the VPS can commit/push them (gate-protected).
+  - The home server is onboarded as a synced replica and M2 worker candidate; dispatch + queue remain M2 work.
+  - Operational notes: only one WhatsApp bridge may run at a time — after `hermes gateway stop` an orphaned `bridge.js` can survive and must be cleared (verify port 3000) before starting another host; the WhatsApp env transfer must include `WHATSAPP_ENABLED` (a filtered copy can miss it) and the VPS bridge needs `npm install` once before its first start.
