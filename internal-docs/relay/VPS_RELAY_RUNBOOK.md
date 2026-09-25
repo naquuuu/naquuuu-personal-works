@@ -66,6 +66,7 @@ sudo loginctl enable-linger <user>
 - The SOUL persona canonical in `internal-docs/relay/WHATSAPP_SOUL.md` is copied to `~/.hermes/SOUL.md` on the relay host (ADR-027); a persona change lands in both.
 - WhatsApp display settings (`display.platforms.whatsapp`): `{tool_progress: off, show_reasoning: false, interim_assistant_messages: false, streaming: false}`.
 - Curator-directed messages (`@curator`, "ask the curator", "curator:") route to `opencode run --agent naquuuu-curator`.
+- Image generation runs through `scripts/gen_image.py` (free, keyless); the bot delivers it with the `MEDIA:` directive; vision (reading images) needs a multimodal provider configured under `auxiliary.vision`.
 
 ## Step 4 — opencode + runtime clone
 
