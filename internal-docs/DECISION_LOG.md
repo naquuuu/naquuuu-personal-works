@@ -406,3 +406,20 @@ This log records major technical and structural decisions made across personal p
   - The group JID is a private identifier (owner-side); docs and the repo keep only the setup pattern.
   - Residual risk unchanged and restated: any allowlisted account can trigger `opencode run` with full autonomy; keep the allowlist tight.
   - `hermes update --backup` (install is 1021 commits behind) remains the recommended maintenance to normalize the Windows service/restart path.
+
+---
+
+## ADR-025: Automatic Workspace Sync (Gate-Protected Auto-Commit + Node Auto-Pull)
+- **Date**: 2026-09-25
+- **Status**: Accepted (live on the laptop and the VPS; home server pending its tailnet join)
+- **Context**: The owner works across several machines (the laptop, the always-on VPS, a second laptop, and a planned home-server laptop) and does not want manual `git push`/`pull` steps. The previous posture (ADR-015/016) kept commit and push as the human gate. Multi-writer reality now needs a deterministic convergence mechanism that still protects the public repo.
+- **Decision**:
+  1. Every node runs a sync timer: Windows laptop — a Scheduled Task (`Naquuuu Hub Auto-Sync`) every 10 minutes; Linux nodes (VPS, home server) — a systemd user timer every 5 minutes.
+  2. The sync routine is uniform: `git fetch` → if the tree is dirty, run `scripts/verify_sanitization.py` (abort on failure) → `git add -A` + `git commit` → `git rebase --autostash origin/main` → `git push origin main`.
+  3. GitHub remains the canonical hub. Standing Rule 1 (one writer per tree) is amended for this personal workspace: any node may write, but nodes stay converged through auto-sync, and work stays on one thread at a time to avoid same-file conflicts.
+  4. Artifacts: `scripts/hub_autosync.ps1` (Windows), `scripts/node_autosync.sh` (Linux), `scripts/provision_home_server.sh` (home-server onboarding: base packages, Tailscale, always-on, clone, opencode, sync timer).
+  5. The VPS stays push-disabled until a repo-scoped deploy key is provisioned (owner-approved; pending). Failed pushes from read-only nodes are non-fatal by design.
+- **Consequences**:
+  - Commit history gains `chore(sync): <host> <timestamp>` entries; the public repo mirrors the workspace within ~10 minutes.
+  - A failed sanitization gate blocks the commit/push (by design); a rebase conflict stops the sync and leaves the tree for manual review.
+  - The laptop is no longer the sole writer; the VPS can push once the deploy key lands, and the home server joins as a replica/worker node.
