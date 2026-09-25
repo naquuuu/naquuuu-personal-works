@@ -162,14 +162,16 @@ Use this skill for anything about the NAQUUUU workspace: status questions, plan 
 Answer from the repository, never from memory:
 
 1. Read `~/naquuuu/internal-docs/STATUS.md` first (current state digest).
-2. For details, search `~/naquuuu/internal-docs/` and `git log` in `~/naquuuu`.
-3. Answer with the source path(s). If the workspace does not answer it, say "not in the workspace" explicitly.
+2. Read `~/naquuuu/internal-docs/LESSONS.md` (curated lessons) before searching.
+3. For details, search `~/naquuuu/internal-docs/` and `git log` in `~/naquuuu`.
+4. Answer with the source path(s). If the workspace does not answer it, say "not in the workspace" explicitly.
 
 ## 2. Engineering tasks (development)
 
 1. Work from the clone: `cd ~/naquuuu`
-2. Run the task headlessly, one task per call:
-   `opencode run "Read internal-docs/STATUS.md for context. Task: <task>. Report changed files, commands run, and evidence. Do not commit or push."`
+2. Run the task headlessly, one task per call, preferring the warm server:
+   `opencode run --attach http://127.0.0.1:4096 --dir ~/naquuuu "Read internal-docs/STATUS.md and internal-docs/LESSONS.md for context. Task: <task>. Report changed files, commands run, and evidence. Do not commit or push."`
+   If the attach fails, run the same command without `--attach`/`--dir`.
    Optionally pin the agent: `opencode run --agent naquuuubot "<task>"`
 3. Return the agent's final output to the owner, trimmed to the essentials. For jobs longer than a minute, prefix the reply with `job <HHMM>`.
 
