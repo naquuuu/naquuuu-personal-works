@@ -8,22 +8,24 @@ $hub = "C:\personal\naquuuu"
 
 if (-not (Test-Path "$hub\.git")) { exit 0 }
 Set-Location $hub
-if (-not (git status --porcelain)) { exit 0 }
 
-python scripts/verify_sanitization.py
-if ($LASTEXITCODE -ne 0) {
-    Write-Output "auto-sync: sanitization gate FAILED - not committing"
-    exit 1
+git fetch --quiet origin main
+
+if (git status --porcelain) {
+    python scripts/verify_sanitization.py
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "auto-sync: sanitization gate FAILED - not committing"
+        exit 1
+    }
+    git add -A
+    git commit --quiet -m "chore(sync): $env:COMPUTERNAME $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
 }
 
-git add -A
-git commit --quiet -m "chore(sync): $env:COMPUTERNAME $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
-
-git pull --rebase --autostash --quiet
+git rebase --autostash --quiet origin/main
 if ($LASTEXITCODE -ne 0) {
     git rebase --abort
-    Write-Output "auto-sync: pull/rebase conflict - tree left for manual review"
+    Write-Output "auto-sync: rebase conflict - tree left for manual review"
     exit 1
 }
 
-git push --quiet
+git push --quiet origin main

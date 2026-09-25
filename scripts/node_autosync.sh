@@ -27,9 +27,9 @@ if [ -n "$(git status --porcelain)" ]; then
   git commit --quiet -m "chore(sync): $(hostname) $(date '+%Y-%m-%d %H:%M')" || true
 fi
 
-if ! git pull --rebase --autostash --quiet origin main; then
+if ! git rebase --autostash --quiet origin/main; then
   git rebase --abort 2>/dev/null || true
-  echo "auto-sync: pull/rebase conflict - tree left for manual review"
+  echo "auto-sync: rebase conflict - tree left for manual review"
   exit 1
 fi
 
