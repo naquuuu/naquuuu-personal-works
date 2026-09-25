@@ -13,6 +13,9 @@ The live skill is installed at:
 
 This repository keeps the canonical copy below; re-copy it to the install path after edits.
 
+## VPS relay (Linux, planned)
+Planned host: Tencent Cloud Lighthouse 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS (purchase in progress). The canonical Linux skill copy and the full provisioning steps live in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; the Windows skill below remains canonical for the laptop.
+
 ## Skill content
 
 ```markdown
@@ -63,10 +66,21 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 - If `opencode run` fails, return the error lines only.
 ```
 
-## Evidence (2026-09-23)
+## Evidence
 - CLI validation: `opencode run "<task>"` from Git Bash executed in the hub and returned branch + dirty count (exit 0).
 - WhatsApp end-to-end: owner asked Hermes to "Ask opencode to report the hub's branch and latest commit" -> reply reported branch `main`, latest commit `9a97df7`, message `fix: registry-safe AGY tool list (code_search removed)`.
 - v2.0.0 (2026-09-23): adds repository-grounded question answering (`internal-docs/STATUS.md` plus docs and `git log` search) so WhatsApp answers come from the repository, not from the agent's memory; development tasks now carry a STATUS.md context header.
+- 2026-09-24: group replies verified live in a private test group; `scripts/host_check.py` READY (5 PASS / 1 WARN / 0 FAIL, the WARN being the dirty hub tree during edits).
+
+## Group chats (bot mode)
+Hermes defaults to `WHATSAPP_GROUP_POLICY=pairing`, which forwards nothing from groups. The relay uses a per-group allowlist:
+
+- Policy: `WHATSAPP_GROUP_POLICY=allowlist` with `WHATSAPP_GROUP_ALLOWED_USERS=<group JID>@g.us`.
+- Mention gate: `WHATSAPP_REQUIRE_MENTION=true` (replies only to @mentions, replies to the bot, or `/commands`).
+- `open` is refused by the installed Hermes v0.21.4 unless `WHATSAPP_ALLOW_ALL_USERS` is enabled (safe-mode rail); allow-all is intentionally not used.
+- Sender gating stays on `WHATSAPP_ALLOWED_USERS` (owner plus one guest; values live only in the host env).
+- Helper: `scripts/whatsapp_group_fix.py` applies the policy idempotently with a timestamped `.env` backup and falls back to `hermes gateway start` when `hermes gateway restart` reports a service-manager failure on this VBS-only Windows install.
+- Ops note: a stale WhatsApp bridge process from a previous run can hold port 3000 and must be cleared before restart.
 
 ## Deferred
 - Job IDs are informal (`job <HHMM>`); a durable queue and per-job approvals were superseded by ADR-016 (autonomous execution) and can be revisited if needed.

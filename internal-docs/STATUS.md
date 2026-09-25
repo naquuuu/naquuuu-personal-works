@@ -1,12 +1,12 @@
 # NAQUUUU Workspace Status
 
-- Updated: 2026-09-23
+- Updated: 2026-09-24
 - Purpose: one-page digest for the WhatsApp relay and any agent that needs current context. Details live in `DECISION_LOG.md`, `HOSTS.md`, and the specs.
 
 ## Live today
 
 - 7-agent opencode roster (naquuuubot + naquuuu-curator + 5 hidden subagents); personas in `.opencode/agent/`, AGY mirrors in `.agents/agents/`.
-- WhatsApp relay: the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`).
+- WhatsApp relay: the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`); group intake is per-group allowlist and mention-only (ADR-024).
 - Autonomy: shell execution is auto-approved with destructive deny-lists; `git commit` and `git push` remain the human gate.
 - Remote access: Tailscale + RDP (the phone drives the desktop); SSH deferred (ADR-020).
 - Gates: sanitization runs on every commit via `.githooks`; `scripts/host_check.py` checks the Hermes gateway and bridge.
@@ -35,5 +35,5 @@
 ## Next steps
 
 1. Finish the Stage 0 owner actions.
-2. Provision the plain VPS relay (decoupled track).
+2. Provision the plain VPS relay (decoupled track) — host selected (Tencent Cloud Lighthouse, Singapore, Ubuntu 24.04); runbook ready at `internal-docs/relay/VPS_RELAY_RUNBOOK.md`.
 3. Decide Stage A after the gates pass.

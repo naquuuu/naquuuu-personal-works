@@ -389,3 +389,20 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - The curator's register now routes by task type; hybrid tasks default to the warm register.
   - Two-surface mirror sync (ADR-014) is maintained in the same change.
+
+---
+
+## ADR-024: WhatsApp Group Intake via Per-Group Allowlist (Relay)
+- **Date**: 2026-09-24
+- **Status**: Accepted (group replies verified live; host_check READY)
+- **Context**: The owner wanted the WhatsApp relay usable in a group chat, not just DMs. Hermes defaults to `WHATSAPP_GROUP_POLICY=pairing`, which forwards nothing from groups, so group messages never reached the agent. A first attempt with `group_policy=open` was rejected by the installed Hermes v0.21.4: it refuses to start with `open` unless `WHATSAPP_ALLOW_ALL_USERS` is enabled (safe-mode rail, confirmed via foreground run: "Refusing to start … Gateway exiting cleanly"), and the refusal surfaced as an unexplained gateway outage (spawns exited cleanly; Windows logged no crash).
+- **Decision**:
+  1. Group intake = per-group allowlist: `WHATSAPP_GROUP_POLICY=allowlist` + `WHATSAPP_GROUP_ALLOWED_USERS=<group JID>@g.us` for the private test group; `WHATSAPP_REQUIRE_MENTION=true` (reply only to @mentions, replies to the bot, or /commands). `open` is not used; `WHATSAPP_ALLOW_ALL_USERS` is rejected as unsafe (any sender could trigger the relay).
+  2. Sender gating stays layered on top: `WHATSAPP_ALLOWED_USERS` carries the owner plus one guest number (owner-side config; numbers never enter the repo or model context).
+  3. Tooling: `scripts/whatsapp_group_fix.py` applies the policy idempotently (timestamped `.env` backup; number/JID values passed on the command line only, never echoed). On this VBS-only Windows install the script falls back to `hermes gateway start` when `gateway restart` reports a service-manager failure.
+  4. Operational notes: a stale bridge process from a previous run can hold port 3000 and must be cleared before restart; the gateway's Windows auto-start is a Startup-folder VBS (no scheduled task).
+- **Consequences**:
+  - The relay is reachable in the allowlisted group only, mention-gated; all other groups stay silent; DM behavior is unchanged.
+  - The group JID is a private identifier (owner-side); docs and the repo keep only the setup pattern.
+  - Residual risk unchanged and restated: any allowlisted account can trigger `opencode run` with full autonomy; keep the allowlist tight.
+  - `hermes update --backup` (install is 1021 commits behind) remains the recommended maintenance to normalize the Windows service/restart path.

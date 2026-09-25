@@ -29,7 +29,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Laptop | Primary, self-hosted | opencode with the 7-agent roster; Hermes gateway and WhatsApp bridge; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface) | Holds runtime authority today | Local console; Tailscale SSH/RDP from the phone | Active; host_check READY (5 PASS, 1 WARN, 0 FAIL) |
 | DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven (connectivity only); Stage A blocked until the Phase 4 gate set passes (Section 9); sandboxed worker only; RIC1; preview terms |
-| VPS | Planned relay host (decoupled decision) | opencode + Hermes (planned); runtime clone; `opencode serve` on loopback/Tailscale; Hermes under systemd | None today; becomes primary after a switch drill | Tailscale (planned) | Not provisioned |
+| VPS | Planned relay host (decoupled decision) | opencode + Hermes (planned); runtime clone; `opencode serve` on loopback/Tailscale; Hermes under systemd | None today; becomes primary after a switch drill | Tailscale (planned) | Purchase in progress (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); see `internal-docs/relay/VPS_RELAY_RUNBOOK.md` |
 | Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH/RDP to the laptop | In use |
 
 ## 3. Credential and Data Boundaries
@@ -67,6 +67,8 @@ flowchart LR
 7. Constraints: RIC1 only; no inbound connections; port-forward for dashboards; preview terms (no SLA, no durability guarantees, termination at will).
 
 ### 4.3 VPS (planned, per spec Phase 4 step 2)
+
+Execution runbook: `internal-docs/relay/VPS_RELAY_RUNBOOK.md` (M1 build ready; supersedes this list where they differ).
 
 1. Provision opencode + Hermes on the VPS.
 2. Clone the runtime workspace.
