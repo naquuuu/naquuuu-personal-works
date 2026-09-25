@@ -18,6 +18,8 @@ Live host: Tencent Cloud Lighthouse 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.
 
 The WhatsApp persona is canonical at `internal-docs/relay/WHATSAPP_SOUL.md` (mirrored to `~/.hermes/SOUL.md` on the host; ADR-027).
 
+- Optimization and media plan (latency, context reuse, images): `internal-docs/relay/RELAY_PLAN.md`.
+
 ## Skill content
 
 ```markdown

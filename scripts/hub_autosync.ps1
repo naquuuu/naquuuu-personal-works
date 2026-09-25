@@ -18,7 +18,7 @@ if (git status --porcelain) {
         exit 1
     }
     git add -A
-    git commit --quiet -m "chore(sync): $env:COMPUTERNAME $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+    git commit --quiet -m "chore(sync): hub $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
 }
 
 git rebase --autostash --quiet origin/main
