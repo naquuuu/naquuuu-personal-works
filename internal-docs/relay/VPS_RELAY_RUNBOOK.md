@@ -61,6 +61,12 @@ sudo loginctl enable-linger <user>
 - The hub `.env` (`C:\personal\naquuuu\.env`) never goes to the VPS.
 - Do not start the gateway yet.
 
+### Relay persona and display
+
+- The SOUL persona canonical in `internal-docs/relay/WHATSAPP_SOUL.md` is copied to `~/.hermes/SOUL.md` on the relay host (ADR-027); a persona change lands in both.
+- WhatsApp display settings (`display.platforms.whatsapp`): `{tool_progress: off, show_reasoning: false, interim_assistant_messages: false, streaming: false}`.
+- Curator-directed messages (`@curator`, "ask the curator", "curator:") route to `opencode run --agent naquuuu-curator`.
+
 ## Step 4 — opencode + runtime clone
 
 ```bash

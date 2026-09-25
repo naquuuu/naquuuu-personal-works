@@ -440,3 +440,20 @@ This log records major technical and structural decisions made across personal p
   - The relay survives the laptop being off; WhatsApp tasks run against the VPS clone and the VPS can commit/push them (gate-protected).
   - The home server is onboarded as a synced replica and M2 worker candidate; dispatch + queue remain M2 work.
   - Operational notes: only one WhatsApp bridge may run at a time — after `hermes gateway stop` an orphaned `bridge.js` can survive and must be cleared (verify port 3000) before starting another host; the WhatsApp env transfer must include `WHATSAPP_ENABLED` (a filtered copy can miss it) and the VPS bridge needs `npm install` once before its first start.
+
+---
+
+## ADR-027: WhatsApp Relay UX Standard (Human Tone, No Meta, Curator Route)
+- **Date**: 2026-09-25
+- **Status**: Accepted (applied on the relay host; tone upgrade pending a stronger assistant model)
+- **Context**: After M1, the owner reported the WhatsApp replies still felt robotic: bullets and menus in place of conversation, capability monologues, process narration, and one reply that printed a raw recipient identifier. The owner also wants to reach `naquuuu-curator` from WhatsApp instead of only inside the IDE.
+- **Decision**:
+  1. **Display**: on the relay host the WhatsApp platform runs with `tool_progress: off`, `show_reasoning: false`, `interim_assistant_messages: false`, and `streaming: false` (`display.platforms.whatsapp`).
+  2. **Persona** (`~/.hermes/SOUL.md` on the relay host): human, 1-3 sentences by default, no bullet lists or choice menus unless asked, no process narration (skills/tools/reasoning), failures in one plain sentence, and **never print phone numbers, IDs, or JIDs** — people are named, not numbered.
+  3. **Routing**: workspace/agent/project/state questions run `opencode run --agent naquuuubot` and are answered from the result, never from Hermes memory or other skills. Curator-directed messages (`@curator`, "ask the curator", "curator:") run `opencode run --agent naquuuu-curator` and relay the curator reply, trimmed.
+  4. **Model**: the assistant model must be capable; the free-tier default produced verbose, manual-like output. The owner selects via `/model <name> --global`.
+  5. **Canonical persona**: the SOUL text is versioned in the repo (`internal-docs/relay/WHATSAPP_SOUL.md`) and copied to the relay host.
+- **Consequences**:
+  - Replies read like a colleague; workspace answers stay grounded in the repository through opencode.
+  - The curator is reachable from WhatsApp without a second number; a dedicated second-number curator bot remains an option if the owner wants separate creative threads.
+  - Any future persona or display change lands in both the repo copy and the relay host (mirror rule, same as ADR-014).
