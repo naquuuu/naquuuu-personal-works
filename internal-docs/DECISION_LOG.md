@@ -456,4 +456,79 @@ This log records major technical and structural decisions made across personal p
 - **Consequences**:
   - Replies read like a colleague; workspace answers stay grounded in the repository through opencode.
   - The curator is reachable from WhatsApp without a second number; a dedicated second-number curator bot remains an option if the owner wants separate creative threads.
-  - Any future persona or display change lands in both the repo copy and the relay host (mirror rule, same as ADR-014).
+   - Any future persona or display change lands in both the repo copy and the relay host (mirror rule, same as ADR-014).
+
+---
+
+## ADR-028: Relay Policy Bundle — Assistant Provider, Image Generation, Group Intake, Anti-Leak
+- **Date**: 2026-09-25
+- **Status**: Accepted (owner-set; policy record)
+- **Context**: After M1 (relay on the VPS, ADR-026) and the UX standard (ADR-027), several day-of decisions had no single record: which assistant provider the relay prefers, how images are generated, how group access is granted, and how identifiers may be handled. They are bundled here so agents stop re-deriving them.
+- **Decision**:
+  1. **Assistant provider**: Nous Portal is primary for the Hermes relay assistant; **Gemini is the configured fallback** so a primary outage does not silence the relay. Model choice stays owner-side (`/model <name> --global`); the ADR-027 "must be capable" bar applies to both.
+  2. **Image generation has no viable free tier**: the keyless free generator was dropped the same day it shipped; generation runs through the Gemini API in `scripts/gen_image.py` with a configurable model and a fallback chain (`gemini-3.1-flash-image` → `gemini-2.5-flash-image` → `gemini-3-pro-image`), keyed by `GEMINI_IMAGE_KEY` (fallback `GOOGLE_API_KEY`). Vision (reading images) stays on `auxiliary.vision`.
+  3. **Pinned model IDs retire without notice**: external-model callers keep a configurable model plus a fallback chain rather than a single hardcoded ID (grounded in the `gen_image.py` chain).
+  4. **Group intake is an explicit allowlist, not a config edit**: `WHATSAPP_GROUP_POLICY=allowlist` + `WHATSAPP_GROUP_ALLOWED_USERS`, managed by the owner-driven command in `scripts/wa_group_allow.py`, with the mention gate on; `open`/allow-all is refused and not used; sender gating stays on `WHATSAPP_ALLOWED_USERS` (ADR-024).
+  5. **Anti-leak**: the relay never prints phone numbers, IDs, or JIDs — people are named (ADR-027). The rule covers tool output and error text, not only persona prose.
+- **Consequences**:
+  - A primary-provider outage fails over instead of going dark; the fallback must be validated when changed.
+  - Image generation is paid and key-gated; a missing or billing-disabled key is a one-line failure, never a stack trace.
+  - Adding a group is a command; removing one is the same command inverted.
+  - Any relay surface that can print an identifier is a leak surface; reviewers check tool output, not just the persona.
+
+---
+
+## ADR-029: M2 — Worker Dispatch and Durable Queue (VPS → Home Server)
+- **Date**: 2026-09-25
+- **Status**: Proposed (scripts authored; worker SSH trust pending owner authorization; owner approval required before live wiring)
+- **Context**: The VPS relay (2 vCPU / 2 GB) is the always-on WhatsApp front door but is too small for heavy dev jobs. The home server (`mipad-linux`, i5-8250U / 8 GB) is an onboarded synced replica and the M2 worker candidate (ADR-026). Heavy jobs should run on the worker over Tailscale and must survive the worker being offline.
+- **Decision (proposed)**:
+  1. **Dispatch**: `scripts/dispatch_job.sh` runs on the relay host; heavy engineering tasks go to the worker over SSH when reachable, and are enqueued durably when not. `--local` keeps light work on the relay host (RELAY_PLAN §1).
+  2. **Durable queue**: `~/.naquuuu/queue/{pending,done,failed}/` with header-prefixed job files (no `jq` dependency); `scripts/drain_queue.sh` drains at most one job per tick under a `flock` (with a `mkdir`-lock fallback that fails closed), enqueues atomically (tmp + `mv`), and validates job ids before using them in paths.
+  3. **Timer**: `scripts/install_dispatch_drain.sh` installs the drain + `job_status.sh` helpers and a systemd user service + timer on the relay host, with unit timeouts and an `EnvironmentFile` (`~/.config/naquuuu/dispatch.env`) so tunables reach the timer (mirrors the ADR-025 pattern).
+  4. **Worker execution**: `scripts/worker_exec.sh` runs on the worker (best-effort pull, then opencode). Commit/push are not expected and not credentialed on the replica — that is policy, not a mechanism.
+  5. **Trust**: a **dedicated** relay→worker ed25519 key (`NAQUUUU_WORKER_KEY`, default `~/.ssh/id_ed25519_worker`) is pinned with `-i` + `IdentitiesOnly=yes`; the GitHub deploy key is never used for worker SSH, and a missing key means the worker is not ready (the job queues). The owner authorizes it with `scripts/authorize_worker.sh`.
+  6. **Resilience**: remote runs are wrapped in `timeout` (`NAQUUUU_JOB_TIMEOUT`, default 1800 s) with `ServerAliveInterval`; a reachable-but-failing dispatch is enqueued rather than dropped.
+  7. **Results and retention**: completions append to `$NAQUUUU_QUEUE_DIR/completed.log` and are summarized by `scripts/job_status.sh`; `--prune` with `NAQUUUU_QUEUE_KEEP` (default 50) bounds `done/` and `failed/`. Job bodies are stored verbatim and must be Tier 2 only (owner responsibility).
+  8. **Configuration** is by env only: `NAQUUUU_WORKER_HOST`, `NAQUUUU_WORKER_USER`, `NAQUUUU_WORKER_REPO`, `NAQUUUU_REPO`, `NAQUUUU_WORKER_KEY`, `NAQUUUU_QUEUE_DIR`, `NAQUUUU_WORKER_REACH_TIMEOUT`, `NAQUUUU_JOB_TIMEOUT`, `NAQUUUU_MAX_ATTEMPTS`, `NAQUUUU_DRAIN_BATCH`, `NAQUUUU_QUEUE_KEEP`, `OPENCODE_ATTACH`, `NAQUUUU_OPENCODE`.
+- **Consequences**:
+  - Heavy jobs are bounded by the worker's RAM, not the relay's; the optional 4 GB VPS upgrade is avoided.
+  - Queued jobs wait for the worker instead of failing; the owner sees a `queued` reply, and results are archived and queryable via `scripts/job_status.sh` (the relay skill is not yet wired to poll them — pending approval).
+  - Adds one network hop to heavy jobs; light work stays local on the relay host.
+  - **Open**: worker key authorization and owner approval before the relay skill is switched to dispatch.
+
+---
+
+## ADR-030: WhatsApp Sender Allowlist Is Owner-Side (No Chat Command)
+- **Date**: 2026-09-25
+- **Status**: Accepted (policy record)
+- **Context**: In a shared group the group allowlist was granted, yet members other than the owner/guest stayed silent. The owner asked the bot in chat to "whitelist <number>"; the relay refused because `scripts/wa_group_allow.py` manages group JIDs only, while person admission lives in `WHATSAPP_ALLOWED_USERS`. A chat command that takes typed numbers would push Tier 1 identifiers through the model (AGENTS.md Model-Input Boundary), and a log-derived "latest sender" variant would usually capture the owner's own command.
+- **Decision**:
+  1. Group admission (`WHATSAPP_GROUP_ALLOWED_USERS`, via `scripts/wa_group_allow.py`) and person admission (`WHATSAPP_ALLOWED_USERS`) stay separate gates. Granting a group does not admit its members.
+  2. Person admission is owner-side only: `scripts/whatsapp_group_fix.py --allow-user <digits>` on the relay host, or edit `WHATSAPP_ALLOWED_USERS` and restart. No WhatsApp chat command exists and none is planned while phone numbers remain Tier 1.
+  3. `WHATSAPP_ALLOW_ALL_USERS` / `WHATSAPP_ALLOWED_USERS=*` stay rejected (ADR-024). Add named people, never the whole room.
+  4. Deferred: a name-resolution tool (owner types a display name; a script resolves it against the bridge log and appends the JID without printing it) is gated on verifying the bridge log exposes display names plus sender JIDs.
+- **Consequences**:
+  - "Allowlist this person" in chat gets a one-line owner-side instruction instead of a dead end; the relay never handles numbers.
+  - Every added person can trigger `opencode run` with full autonomy (ADR-016 residual risk); keep the list tight.
+  - The two-gate model is documented in `internal-docs/relay/README.md` and `internal-docs/LESSONS.md` #13; the relay skill copies carry the owner-side redirect rule.
+
+---
+
+## ADR-031: WhatsApp Group Presence (Per-Group Free-Response, Owner-Only Execution)
+- **Date**: 2026-09-27
+- **Status**: Accepted (authored; owner rollout pending on the relay host). Supersedes the earlier "observe + wake word" draft of this ADR, which was built on an unverified feature (see Context).
+- **Context**: The owner asked the WhatsApp bot to participate in the group chat, showing initiative and talking smart, with two explicit requirements: other people must be able to chat with the bot, but **only the owner's chat may provoke tool execution or skill installation**, and the owner must later be able to whitelist additional groups from WhatsApp. The first draft of this ADR assumed an "observe + backfill" awareness feature; a live probe of the relay host proved that feature is **Telegram-only on the installed Hermes v0.21.4** and that free-response is the only workable proactivity lever for WhatsApp. A speaker therefore reaches the agent but is not an operator, and the person allowlist is a speaking filter, not an execution gate.
+- **Decision**:
+  0. **Supersession**: this ADR narrows two earlier consequences that are now too broad — ADR-024 §Consequences ("any allowlisted account can trigger `opencode run` with full autonomy") and ADR-030 §Consequences ("Every added person can trigger `opencode run` with full autonomy"). Under this ADR a listed person may **speak** but not **act**; execution is owner-only via `wa_owner_gate.py`. The earlier statements remain the historical record for the pre-free-response posture.
+  1. **Speaking — per-group free-response**: `WHATSAPP_FREE_RESPONSE_CHATS` lists chats whose members reach the agent with no @mention (the group path bypasses the per-sender allowlist for those chats). It is applied per already-allowlisted group via `scripts/wa_free_response.py` (idempotent, timestamped backup, counts only, never prints a chat id). A newly added group is **mention-only** until the owner promotes it — admission (`scripts/wa_group_allow.py`) and promotion (`scripts/wa_free_response.py`) are separate owner-run commands. `WHATSAPP_ALLOW_ALL_USERS` / `open` stay refused (ADR-024).
+  2. **Acting — owner-only, enforced by a hard gate**: `scripts/wa_owner_gate.py` is the sole execution gate. It ALLOWs only a sender in `NAQUUUU_WA_OWNER_IDS` (host env, digits only, never in the repo) and DENYs otherwise, failing closed (unset/unreadable/wildcard owner list denies). The relay skill runs it before `opencode run`, before any tool, and before any skill install or change; on DENY the assistant replies conversationally and executes nothing. Guests can always chat; only the owner can provoke tool execution. This is what closes the ADR-016 residual risk that free-response would otherwise reopen.
+  3. **Owner-only chat command — group admission**: the single chat command is "add this group" (owner-only, refused for anyone else via the same owner gate), running `scripts/wa_group_allow.py --add-latest`, which takes the JID from the gateway log so an id is never typed, printed, or passed through chat. There is no chat command to install a tool, edit config, or admit a person (ADR-030).
+  4. **Silence**: when nothing is worth saying, the assistant emits `NO_REPLY` (supported by the gateway) instead of a message; replies stay 1-3 sentences in the owner's language/register and never print numbers, ids, or JIDs (ADR-027 / ADR-028).
+  5. **No thread awareness**: the relay is **stateless per turn** on v0.21.4 — each turn sees only the triggering message. No observation/`observe_*`/`history_backfill` keys are written (they do not exist for WhatsApp on this version). The dead `wa_group_proactive.py` helper that applied them is removed.
+  6. **Persona**: `internal-docs/relay/WHATSAPP_SOUL.md` encodes the above (free-response vs mention-only addressing, owner-gate-before-execute, `NO_REPLY` default, group-add command), mirrored to `~/.hermes/SOUL.md` (ADR-027 mirror rule). Model stays the `opencode.jsonc` default `opencode-go/deepseek-v4.1-flash` (`small_model` `opencode-go/deepseek-v4-flash`).
+- **Consequences**:
+  - The owner's two requirements are met: anyone in a promoted group can chat; only the owner can execute. The execution boundary is one fail-closed script, not prose alone.
+  - Proactivity is per group and deliberate; adding groups does not widen execution, and promotion is never automatic.
+  - The relay is stateless per turn: it cannot reference earlier unmentioned chatter, and no turn may imply it read the room. This is a real limit of the current Hermes version, not a design choice.
+  - Rollout is owner-run on the relay host: promote groups, set `NAQUUUU_WA_OWNER_IDS` (host-side), mirror the SOUL, restart; steps and verification in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`.

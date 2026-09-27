@@ -1,13 +1,13 @@
 # Host Topology and Switch Runbook (HOSTS.md)
 
-- Date: 2026-09-23
-- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
+- Date: 2026-09-25
+- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. M2 worker dispatch is authored and Proposed (ADR-029) - pending worker SSH trust and owner approval, not live. Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`), not applied. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
 - Scope: host classes, topology, credential boundaries, bootstrap, authority, switch/failover, readiness, and remote access.
-- Related: spec Sections 4 and 10; ADR-011 through ADR-026; the Phase 4 research doc.
+- Related: spec Sections 4 and 10; ADR-011 through ADR-029; the Phase 4 research doc.
 
 ## 1. Topology Overview
 
-The VPS is the live relay host (M1 complete 2026-09-25, ADR-026) and a repo-scoped writer; the laptop remains a workstation/co-writer. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The phone is a client only. Node trees converge through the ADR-025 auto-sync.
+The VPS is the live relay host (M1 complete 2026-09-25, ADR-026) and a repo-scoped writer; the laptop remains a workstation/co-writer. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The phone is a client only. Node trees converge through the ADR-025 auto-sync. M2 (ADR-029) is authored and Proposed: the VPS relay will dispatch heavy jobs to the home server over Tailscale and queue them durably when the worker is offline; it is not live until the worker SSH trust is authorized and the owner approves.
 
 The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the relay moved to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability, while DO Managed Agents is used only as a sandboxed worker after the Phase 4 gate set passes. A preview failure on DO cannot take the relay down.
 
@@ -17,12 +17,12 @@ flowchart LR
   L["Laptop (workstation/co-writer): opencode roster, hooks, doctl; gateway stopped"]
   D["DO Managed Agents (RIC1, preview): Harness Runtime, Action Gateway"]
   V["VPS (live relay host, scoped writer): Hermes gateway, WhatsApp bridge, opencode, clone"]
-  H["Home-server laptop mipad-linux (synced replica; M2 worker candidate)"]
+  H["Home-server laptop mipad-linux (synced replica; M2 worker - proposed, pending)"]
   P -->|"WhatsApp via Hermes"| V
   P -->|"Tailscale SSH/RDP"| L
   L -->|"doctl harness-runtime (sessions, files, port-forward)"| D
   L <-->|"auto-sync (10 min / 5 min)"| V
-  V <-->|"auto-sync (5 min)"| H
+  V <-->|"auto-sync (5 min) / M2 dispatch (pending)"| H
 ```
 
 ## 2. Host Classes
@@ -31,8 +31,8 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Laptop | Workstation, self-hosted | opencode with the 7-agent roster; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface). Hermes gateway stopped; the local WhatsApp session copy is retained as rollback | Workstation/co-writer; relay authority moved to the VPS | Local console; Tailscale SSH/RDP from the phone | Active; relay moved off it (gateway stopped) |
 | DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven (connectivity only); Stage A blocked until the Phase 4 gate set passes (Section 9); sandboxed worker only; RIC1; preview terms |
-| VPS | Live relay host (decoupled decision); scoped writer | Hermes gateway (systemd user service, linger enabled) + WhatsApp bridge (bot mode) + opencode 1.18.32 (`opencode-go` auth) + workspace clone at `~/naquuuu` | Holds relay authority; repo-scoped write via ed25519 deploy key ("vps-relay (M1)") | Tailscale; SSH key-only | Live (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); WhatsApp tasks verified end-to-end; see `internal-docs/relay/VPS_RELAY_RUNBOOK.md` |
-| Home-server laptop (`mipad-linux`) | Synced replica; M2 worker candidate | opencode 1.18.32; workspace clone; auto-sync (systemd user timer, 5 min); Tailscale; i5-8250U / 8 GB RAM / 219 GB NVMe, Ubuntu 24.04 | None today (replica; no relay) | Tailscale | Onboarded; owner follow-ups pending (`opencode auth login`, reboot) |
+| VPS | Live relay host (decoupled decision); scoped writer | Hermes gateway (systemd user service, linger enabled) + WhatsApp bridge (bot mode) + opencode 1.18.32 (`opencode-go` auth) + workspace clone at `~/naquuuu`; M2 dispatch origin (authored, pending) | Holds relay authority; repo-scoped write via ed25519 deploy key ("vps-relay (M1)") | Tailscale; SSH key-only | Live (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); WhatsApp tasks verified end-to-end; see `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; M2 dispatch authored (ADR-029), not live |
+| Home-server laptop (`mipad-linux`) | Synced replica; M2 worker (Proposed - pending) | opencode 1.18.32; workspace clone; auto-sync (systemd user timer, 5 min); Tailscale; M2 worker dispatch target (`scripts/worker_exec.sh`, authored, pending; dedicated relay-to-worker key `NAQUUUU_WORKER_KEY`); i5-8250U / 8 GB RAM / 219 GB NVMe, Ubuntu 24.04 | None (replica; no relay authority); the M2 worker is expected not to commit or push (policy, not an enforced mechanism; the clone is a replica with no push credentials) | Tailscale; inbound SSH from the relay host (M2, pending) | Onboarded; owner follow-ups pending (`opencode auth login`, reboot) |
 | Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH/RDP to the laptop | In use |
 
 ## 3. Credential and Data Boundaries
@@ -46,6 +46,7 @@ flowchart LR
 | VPS provider keys | The VPS gets its own provider key in the host env, never in the repo (spec Phase 4 prerequisite). |
 | WhatsApp pairing | Owner-private; never enters model context; re-pair with the dedicated number on the VPS only if the copied session is rejected. |
 | DO sessions | Tier 2/3 workspace content only; no hub `.env`, no Tier 1 material. |
+| Relay to worker SSH trust (M2) | The relay host reaches the home server only over Tailscale with a dedicated relay-to-worker key (`NAQUUUU_WORKER_KEY`), authorized on the worker by the owner-run `scripts/authorize_worker.sh`; no shared private keys. The durable queue stores job bodies verbatim and must carry Tier 2 task text only (owner responsibility); `job_status.sh --prune` bounds retention. The worker is expected not to commit or push (policy, not an enforced mechanism; the clone has no push credentials, and a commit is not a security boundary). Queued output is archived under `done/` and summarized by `scripts/job_status.sh`; the relay skill is not yet wired to poll it. Pending owner authorization. |
 | Gates and writes | Sanitization, commit, and push stay local and are never re-hosted; no writes to the hub or child repos from Stage A or B until a commit/push policy exists for DO hosts (ADR-019). |
 
 ## 4. Bootstrap per Host
@@ -141,12 +142,16 @@ Snapshot 2026-09-23: `SUMMARY: 5 PASS, 1 WARN, 0 FAIL`, `RESULT: READY (with war
 | RDP | Enabled (`fDenyTSConnections=0`); scoped to the Tailscale interface via the custom `NAQUUUU RDP (Tailscale)` rule (port 3389 TCP; built-in wide Remote Desktop rules disabled); NLA off because the account is Azure AD (`UserAuthentication=0`); verified live from the phone (ADR-020) | None; keep the tailnet ACLs tight |
 | Phone access | WhatsApp via Hermes; Tailscale for SSH/RDP to the laptop | Keep the phone client-only |
 
+- Tailnet ACL hardening (drafted, not applied): the tailnet currently mixes work machines with personal devices. `internal-docs/TAILSCALE_ACL.md` defines a `tag:personal` selector with default-deny and explicit SSH grants so only personal devices reach the VPS relay and the home server. Apply from the Tailscale admin console; test with `tailscale debug prefs` and the console ACL tester before trusting it.
+
 ## 8. References
 
 - `internal-docs/specs/2026-09-22-agent-subagent-architecture.md`, Sections 4 and 10.
-- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-026.
+- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-029.
 - `internal-docs/research/2026-09-23-do-managed-agents-phase4.md`.
 - `internal-docs/relay/README.md`.
+- `internal-docs/relay/M2_DISPATCH_RUNBOOK.md` (M2, Proposed - pending).
+- `internal-docs/TAILSCALE_ACL.md` (tailnet ACL hardening, drafted - pending).
 - `internal-docs/AGENT_PLAYBOOK.md`.
 - `scripts/setup_remote_access.ps1` (tracked; captures the remote-access setup with transcript logging).
 

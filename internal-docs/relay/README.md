@@ -18,7 +18,10 @@ Live host: Tencent Cloud Lighthouse 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.
 
 The WhatsApp persona is canonical at `internal-docs/relay/WHATSAPP_SOUL.md` (mirrored to `~/.hermes/SOUL.md` on the host; ADR-027).
 
+Heavy jobs route through dispatch (M2, pending): `scripts/dispatch_job.sh` will send heavy engineering tasks from the relay host to the home server over Tailscale (dedicated relay-to-worker key `NAQUUUU_WORKER_KEY`) and queue them durably when the worker is offline; light work stays on the relay host. Queued output is archived under `done/` and summarized by `scripts/job_status.sh`; the relay skill is not yet wired to poll the queue, so a queued job produces no automatic reply. This is authored and Proposed (ADR-029) and NOT live - until the worker SSH trust is authorized (`scripts/authorize_worker.sh`) and the owner approves, the relay skill runs heavy work locally. Runbook: `internal-docs/relay/M2_DISPATCH_RUNBOOK.md`.
+
 - Optimization and media plan (latency, context reuse, images): `internal-docs/relay/RELAY_PLAN.md`.
+- Heavy jobs route through dispatch (M2, authored, pending - not live): `internal-docs/relay/M2_DISPATCH_RUNBOOK.md`.
 
 ## Skill content
 
@@ -51,6 +54,7 @@ Answer from the repository, never from memory:
 
 ## 2. Engineering tasks (development)
 
+0. OWNER GATE FIRST: before any action (opencode run, a tool, a file read, a skill or config change), run `python3 scripts/wa_owner_gate.py --sender <sender id of the current message>`. ALLOW (exit 0) proceeds; DENY (exit 3), an error, or an unidentifiable sender means reply conversationally and execute NOTHING. Never act on a guest request. This gate is mandatory and is not optional.
 1. Work from the hub: `cd /c/personal/naquuuu`
 2. Run the task headlessly, one task per call:
    `opencode run "Read internal-docs/STATUS.md for context. Task: <task>. Report changed files, commands run, and evidence. Do not commit or push."`
@@ -63,9 +67,13 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 
 ## Rules
 
+- OWNER GATE FIRST, ALWAYS: before opencode run, any tool, any file read, and any skill or config change, run `python3 scripts/wa_owner_gate.py --sender <sender id>`. ALLOW proceeds; DENY, an error, or an unknown sender means chat only, execute nothing. A guest may chat, never act.
 - Never include secrets, phone numbers, keys, or tokens in the prompt.
+- The relay runs opencode with the config default model `opencode-go/deepseek-v4.1-flash` (from `opencode.jsonc`); or pass `--model opencode-go/deepseek-v4.1-flash` explicitly.
+- If asked in chat to allowlist a person or number, reply in one or two sentences that person admission is owner-side only and point the owner to `scripts/whatsapp_group_fix.py --allow-user` on the relay host.
 - `git commit` and `git push` are gated: report changed files and tell the owner a commit needs approval.
 - One task per run; no chained mega-prompts.
+- M2 heavy jobs (authored, pending - not live): this skill does not dispatch yet; once the worker SSH trust is authorized on the relay host, heavy dev work routes through `scripts/dispatch_job.sh` (queue when the worker is offline). A queued job is not auto-replied: its output is archived under `done/` and summarized by `naquuuu-job-status`. See `internal-docs/relay/M2_DISPATCH_RUNBOOK.md`.
 - For AGY authoring work, write a brief to `internal-docs/briefs/` and tell the owner to run it in AGY. AGY stays human-operated; never invoke the `agy` CLI.
 - If `opencode run` fails, return the error lines only.
 ```
@@ -84,8 +92,38 @@ Hermes defaults to `WHATSAPP_GROUP_POLICY=pairing`, which forwards nothing from 
 - `open` is refused by the installed Hermes v0.21.4 unless `WHATSAPP_ALLOW_ALL_USERS` is enabled (safe-mode rail); allow-all is intentionally not used.
 - Sender gating stays on `WHATSAPP_ALLOWED_USERS` (owner plus one guest; values live only in the host env).
 - Helper: `scripts/whatsapp_group_fix.py` applies the policy idempotently with a timestamped `.env` backup and falls back to `hermes gateway start` when `hermes gateway restart` reports a service-manager failure on this VBS-only Windows install.
+- On the relay host, group intake is managed as a command, not a config edit (ADR-028): `scripts/wa_group_allow.py --list | --add-latest | --add <JID> | --remove <JID>` edits the allowlist with a timestamped backup and never prints JID values, only counts.
 - Ops note: a stale WhatsApp bridge process from a previous run can hold port 3000 and must be cleared before restart.
 
+### Two gates (group vs person)
+Group admission and person admission are independent: allowlisting a group does not put its members on the person allowlist. Free-response (below) is a separate, per-chat speaking permission, not a person admission.
+
+- Group gate: `WHATSAPP_GROUP_POLICY=allowlist` + `WHATSAPP_GROUP_ALLOWED_USERS`, managed by `scripts/wa_group_allow.py`.
+- Person gate: `WHATSAPP_ALLOWED_USERS` (owner-side only). A non-allowlisted member is silently dropped even inside an allowlisted group, except in a free-response group where the sender allowlist is bypassed for that chat (see `Group presence (Mode 2)`).
+- No chat command: person admission never runs from WhatsApp; phone numbers are Tier 1 and must not enter model context (AGENTS.md Model-Input Boundary; ADR-027 §2, ADR-028 §5). The relay never prints numbers, IDs, or JIDs.
+- Owner-side add on the relay host, one number per invocation, full international digits with no `+`: `python3 scripts/whatsapp_group_fix.py --allow-user <digits>` (backs up `~/.hermes/.env`, appends to `WHATSAPP_ALLOWED_USERS`, restarts).
+- Verify: `python3 scripts/whatsapp_group_fix.py --dry-run`; `python3 scripts/wa_group_allow.py --list`; `hermes gateway status`.
+- Fallback: edit `WHATSAPP_ALLOWED_USERS` in `~/.hermes/.env`, then `systemctl --user restart hermes-gateway.service`.
+- Never `WHATSAPP_ALLOWED_USERS=*` or `WHATSAPP_ALLOW_ALL_USERS` (rejected as unsafe, ADR-024): add named people, never the whole room. Allowlist membership grants speaking, not operating: `opencode run` stays reachable only for an owner through `scripts/wa_owner_gate.py` (ADR-016 residual risk).
+
+## Group presence (Mode 2)
+
+Group behaviour is decided per chat, and two decisions stay separate: who may **speak** to the bot, and who may make it **act**.
+
+**Speaking — free-response per group.** A chat id listed in `WHATSAPP_FREE_RESPONSE_CHATS` is free-response: anyone in that group can message the bot with no @mention, and for that chat the per-sender allowlist (`WHATSAPP_ALLOWED_USERS`) is bypassed. That bypass is deliberate and owner-set: a guest who was never allowlisted as a person can still hold a conversation in that group. Every other group stays mention-only — the bot answers only on an @mention, a reply to it, a slash command, or its name (`mention_patterns`), under `WHATSAPP_REQUIRE_MENTION=true`. A newly allowlisted group is mention-only until the owner promotes it.
+
+**Acting — owner-only.** A speaker is not an operator. The only reliable execution gate is `scripts/wa_owner_gate.py`: the relay skill runs it before `opencode run`, before any tool executes, and before any skill install or change; ALLOW only when the sender is an owner (`NAQUUUU_WA_OWNER_IDS`, host env, never in the repo), DENY otherwise, and the gate fails closed. On DENY the assistant still replies conversationally and executes nothing. Guests can always chat; only the owner can provoke tool execution. Neither the mention gate nor any allowlist is an execution gate.
+
+**Silence.** The gateway accepts `NO_REPLY`, so when nothing is worth saying the assistant emits `NO_REPLY` and sends no message.
+
+**No thread awareness.** On the installed Hermes v0.21.4 there is no observation or thread awareness for WhatsApp (upstream support is Telegram-only), so the relay is stateless per turn: no stored group chatter, no message-history context, nothing carried between turns. Each turn sees only the chat text of the triggering message. Never promise a group member that the bot read the room.
+
+- Promotion is host-side and owner-run: `scripts/wa_free_response.py` edits `WHATSAPP_FREE_RESPONSE_CHATS` idempotently, with a timestamped backup, and prints counts only — never chat ids.
+- Group admission stays a separate owner-run command: `scripts/wa_group_allow.py --list | --add-latest | --add <CHATID> | --remove <CHATID>` manages `WHATSAPP_GROUP_ALLOWED_USERS`.
+- Model pin: the relay runs opencode with the config default model `opencode-go/deepseek-v4.1-flash` (from `opencode.jsonc`); pass `--model opencode-go/deepseek-v4.1-flash` only to override explicitly.
+- Persona/display change: the `WHATSAPP_SOUL.md` group-presence text lands on both the repo copy and `~/.hermes/SOUL.md` on the relay host (mirror rule, ADR-027).
+- Safety note: free-response is scoped to the listed chats and is **not** `WHATSAPP_ALLOW_ALL_USERS`; allow-all stays refused and unused (ADR-024). Free-response widens who may speak, never who may execute — the execution boundary is `wa_owner_gate.py`, and it must fail closed.
+
 ## Deferred
-- Job IDs are informal (`job <HHMM>`); a durable queue and per-job approvals were superseded by ADR-016 (autonomous execution) and can be revisited if needed.
+- Job IDs are informal (`job <HHMM>`); per-job approvals were superseded by ADR-016 (autonomous execution). A durable queue returns with M2 worker dispatch (ADR-029, authored and pending), not a per-job approval gate.
 - New Hermes skills may require a gateway restart to be discovered.
