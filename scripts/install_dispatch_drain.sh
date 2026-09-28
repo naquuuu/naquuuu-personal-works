@@ -12,7 +12,7 @@
 
 set -u
 
-REPO="${NAQUUUU_REPO:-$HOME/naquuuu}"
+REPO="${NAQUUUU_WORKSPACE:-${NAQUUUU_REPO:-$HOME/naquuuu}}"
 BIN="$HOME/.local/bin/naquuuu-drain"
 STATUS_BIN="$HOME/.local/bin/naquuuu-job-status"
 UNIT_DIR="$HOME/.config/systemd/user"

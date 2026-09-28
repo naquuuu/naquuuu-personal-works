@@ -19,7 +19,7 @@ Subcommands:
           127.0.0.1:<port>/callback, verify the OAuth state, exchange the code
           for tokens, and cache them at .secrets/spotify_token.json.
   fetch   Call the Spotify Web API and overwrite the snapshot.
-  status  Report auth state (masked client-id hint only; never prints secrets).
+  status  Report cached auth and snapshot state without any network requests.
 
 Spotify 2026 API notes honored here:
   - No batch endpoints: each time range is fetched one call at a time.
@@ -164,8 +164,8 @@ def require_client_id() -> str:
 
 
 def mask(value: str) -> str:
-    """Masked hint for stdout: at most the first four characters."""
-    return f"{value[:4]}..." if len(value) > 8 else "(set)"
+    """Never disclose any portion of an identifier on an agent-facing surface."""
+    return "(set)" if value else "(missing)"
 
 
 # ---------------------------------------------------------------------------
@@ -806,13 +806,15 @@ def run_status() -> int:
                     "  auth:       authenticated "
                     f"(access token valid ~{max(remaining, 0) // 60} more min)"
                 )
-            if token.get("scope"):
-                print(f"  scopes:     {token['scope']}")
         print(f"  token file: {path}")
 
     snapshot = snapshot_path()
     suffix = "" if snapshot.is_file() else " (not generated yet)"
     print(f"  snapshot:   {snapshot}{suffix}")
+    if snapshot.is_file():
+        modified = datetime.fromtimestamp(snapshot.stat().st_mtime, timezone.utc)
+        print(f"  cached at:  {modified.isoformat(timespec='seconds')}")
+    print("  network:    not contacted (status is cache-only)")
     return 0
 
 

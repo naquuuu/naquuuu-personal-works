@@ -39,10 +39,10 @@ for arg in "$@"; do
   esac
 done
 
-REPO="${NAQUUUU_REPO:-$HOME/naquuuu}"
+REPO="${NAQUUUU_WORKSPACE:-${NAQUUUU_REPO:-$HOME/naquuuu}}"
 WHOST="${NAQUUUU_WORKER_HOST:-mipad-linux}"
 WUSER="${NAQUUUU_WORKER_USER:-ubuntu}"
-WREPO="${NAQUUUU_WORKER_REPO:-${NAQUUUU_REPO:-$HOME/naquuuu}}"
+WREPO="${NAQUUUU_WORKER_REPO:-${NAQUUUU_WORKSPACE:-${NAQUUUU_REPO:-$HOME/naquuuu}}}"
 WKEY="${NAQUUUU_WORKER_KEY:-$HOME/.ssh/id_ed25519_worker}"
 QDIR="${NAQUUUU_QUEUE_DIR:-$HOME/.naquuuu/queue}"
 RTIMEOUT="${NAQUUUU_WORKER_REACH_TIMEOUT:-5}"
@@ -217,7 +217,7 @@ prune_queue() {
   {
     [ -d "$DONE" ] && find "$DONE" -maxdepth 1 -type f -name '*.job' -printf '%T@ %p\n' 2>/dev/null
     [ -d "$FAILED" ] && find "$FAILED" -maxdepth 1 -type f -name '*.job' -printf '%T@ %p\n' 2>/dev/null
-  } | sort -n | awk '{print $2}' > "$list"
+  } | sort -nr | cut -d ' ' -f 2- > "$list"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     total=$((total + 1))
