@@ -1,5 +1,20 @@
 # Astra Handoff — WhatsApp relay, one-shot fix
 
+## Execution result — 2026-09-28, 19:32 WIB
+
+Gateway connection recovered. The live service already had the persistent 180-second
+override, verified in its process environment. The actual blocker was missing `aiohttp`
+in the rebuilt venv: the health-poll loop swallowed its import error and misreported
+an HTTP startup timeout despite a connected Node bridge. Installed the existing
+checkout's pinned `aiohttp==3.14.3` with the venv interpreter (bootstrapped pip through
+`ensurepip`), then restarted the single systemd gateway. Logs confirm `whatsapp
+connected` at 19:32:48 and `Gateway running with 1 platform(s)` at 19:32:49; bridge
+HTTP health also reports connected. No source update, checkout, or session re-pair.
+The owner phone message round-trip is still pending. See L-20 in `../LESSONS.md`.
+
+The original diagnosis below is retained as historical handoff context; the claim
+that the 180-second override was never visible is superseded by the live check above.
+
 Date: 2026-09-28. Read this file first, then act. Everything below was verified on the live
 host (VM-0-8-ubuntu, Ubuntu 24.04, 2 vCPU / 2 GB) during a full-day recovery. Do not re-derive it.
 
