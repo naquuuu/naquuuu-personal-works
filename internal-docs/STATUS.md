@@ -1,20 +1,22 @@
 # NAQUUUU Workspace Status
+<!-- verified-against: ADR-033 -->
 
-- Updated: 2026-09-27
+- Updated: 2026-09-28
 - Purpose: one-page digest for the WhatsApp relay and any agent that needs current context. Details live in `DECISION_LOG.md`, `HOSTS.md`, and the specs.
 
 ## Live today
 
+- **RELAY OUTAGE (2026-09-28) - the WhatsApp relay is DOWN and UNPAIRED.** The session was quarantined as `session.dead-20260928-012110`; the replacement session is not paired, and the gateway is stopped. Root cause was two-fold: the laptop Hermes gateway auto-start (a Startup-folder VBS) was never disarmed after ADR-026 moved the relay to the VPS, so a second host could contest the same WhatsApp account, and `Restart=always` re-spawned the bridge on every failure so each re-pair attempt compounded the last into a provider rate limit. The laptop autostart is now disarmed. Recovery is owner-run, in a fixed order, in `internal-docs/relay/VPS_RELAY_RUNBOOK.md` (section "Relay recovery (2026-09-28 outage)"); the lesson is `L-17`. Do not retry pairing in a loop: repeated attempts are what caused the block.
 - 7-agent opencode roster (naquuuubot + naquuuu-curator + 5 hidden subagents); personas in `.opencode/agent/`, AGY mirrors in `.agents/agents/`.
-- WhatsApp relay hosted on the VPS (M1 complete, ADR-026): the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`); group intake is per-group allowlist and mention-only (ADR-024). The relay survives the laptop being off.
+- WhatsApp relay hosted on the VPS (M1 complete, ADR-026): the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`). Group intake is a per-group allowlist (ADR-024) and **speaking is per-group free-response** via `WHATSAPP_FREE_RESPONSE_CHATS`, while **tool execution is owner-only** through the fail-closed `scripts/wa_owner_gate.py` (`NAQUUUU_WA_OWNER_IDS`, host env only) - a speaker is not an operator (ADR-031, which supersedes the older ADR-024/ADR-030 autonomy consequences). A newly admitted group is mention-only until the owner promotes it. The relay survives the laptop being off.
 - Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the fallback. Image generation is paid and key-gated via `scripts/gen_image.py` (configurable model, 3-model fallback chain; `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`); there is no viable free image tier. Group intake is an owner-driven command (`scripts/wa_group_allow.py`, allowlist + mention gate; `open`/allow-all refused).
-- Auto-sync (ADR-025): gate-protected auto-commit + node auto-pull on the laptop (Scheduled Task, 10 min), the VPS (systemd user timer, 5 min), and the home server (systemd user timer, 5 min); GitHub stays canonical.
+- Auto-sync (ADR-025): gate-protected auto-commit + node auto-pull. **Laptop Scheduled Task is currently `Disabled`** (it last ran 2026-09-25), so laptop edits do not auto-publish; the VPS and home server run systemd user timers. GitHub stays canonical. Note that auto-sync stages first and gates the *staged snapshot*, so an untracked new file is audited before it can be published.
 - Home server (`mipad-linux`) onboarded as a synced replica and M2 worker candidate; owner follow-ups pending (`opencode auth login`, reboot).
 - M2 worker dispatch (ADR-029) is authored and **Proposed - NOT live**: the relay host will dispatch heavy jobs to `mipad-linux` over Tailscale with the dedicated relay-to-worker key (`NAQUUUU_WORKER_KEY`) and queue them durably when the worker is offline; light work stays on the relay host. Queued output is archived under `done/` and summarized by `scripts/job_status.sh` (`--prune` bounds retention); the relay skill is not yet wired to poll it, so a queued job produces no automatic reply. Pending worker SSH trust (`scripts/authorize_worker.sh`, owner-run) and owner approval. Heavy jobs currently run on the relay host.
 - Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`) to put personal devices behind `tag:personal` with default-deny; not applied. The tailnet currently mixes work machines with personal devices.
-- Autonomy: shell execution is auto-approved with destructive deny-lists; commits and pushes are gate-protected by auto-sync and remain reviewable.
+- Autonomy: shell execution is auto-approved with destructive deny-lists. Commits and pushes are gate-protected, but auto-sync **publishes whatever an agent left behind** - it is not a review gate (`L-04`; a bad model pin once went live this way). Treat a commit needing approval as a real requirement, not a formality.
 - Remote access: Tailscale + RDP (the phone drives the desktop); SSH deferred (ADR-020).
-- Gates: sanitization runs via `.githooks` and again inside auto-sync; `scripts/host_check.py` checks the Hermes gateway and bridge.
+- Gates: sanitization runs via `.githooks` and again inside auto-sync, which stages first and then audits the **staged snapshot** (`verify_sanitization.py --staged`), so a brand-new untracked file is no longer published unchecked. Both auto-sync paths **fail closed** when the gate cannot run. `scripts/enable_gates.sh` arms `core.hooksPath` on a Linux host in one command; the VPS never had it set, and its package list omits `python3`, so the relay host could previously commit ungated to a public remote. `scripts/host_check.py` checks the Hermes gateway and bridge.
 
 ## Phase state
 

@@ -1,0 +1,24 @@
+# NAQUUUU hub line-ending policy.
+#
+# Why this file exists: `core.autocrlf=true` is set on this Windows host and there
+# was no .gitattributes, so nothing structurally prevented a Windows checkout from
+# rewriting the POSIX shell hooks in .githooks/ with CRLF line endings.
+#
+# That matters more than usual here, because these two files ARE the sanitization
+# gate and the force-push block. A CRLF-mangled `#!/bin/sh` shebang is not a syntax
+# error - Git simply stops executing the hook. Both gates then fail OPEN with no
+# error, no output, and no commit block. A silent gate is worse than a broken one,
+# because it reports success.
+#
+# Fix: pin LF on anything executed by a POSIX shell. Leave everything else alone so
+# this file does not force a repo-wide line-ending surprise on Windows.
+
+# The gate hooks themselves. Highest priority: their shebang must stay LF.
+.githooks/pre-commit text eol=lf
+.githooks/pre-push    text eol=lf
+
+# Shell scripts, both the repo copies and any installed to ~/.local/bin.
+*.sh        text eol=lf
+
+# GitHub-provided merge driver helper, if ever added.
+.gitattributes text eol=lf

@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "local opencode plugins. the type field exists so node --check resolves esm syntax in this directory."
+}

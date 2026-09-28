@@ -1,20 +1,47 @@
 # Lessons (curated)
+<!-- verified-against: ADR-033 -->
 
-Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything.
+Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything. Route through `internal-docs/INDEX.md` first; this file is the hot slice, not the archive.
 
-1. WhatsApp replies must read human (ADR-027): 1-3 sentences, no bullet menus, no preamble, no process/reasoning/tool chatter.
-2. Never print phone numbers, IDs, or JIDs. WhatsApp mentions arrive as numeric IDs; use the name from the conversation, or say "dia/they", or ask for the name in one line.
-3. Workspace/agent/project/state questions route through `opencode run`; never answer them from Hermes memory or bundled skills.
-4. Auto-sync is gate-protected but publishes whatever an agent left behind: an agent edit changed the opencode model pin to an invalid value and it went live (fixed in `8522de0`). Validate config edits — `opencode.jsonc` must parse and use `provider/model` form.
-5. Only one WhatsApp bridge at a time: `hermes gateway stop` can leave an orphaned `bridge.js`; check port 3000 before starting another host.
-6. Moving a WhatsApp session: the env transfer must include `WHATSAPP_ENABLED`, and a fresh host needs `npm install` in the bridge directory before its first start.
-7. Auto-sync commit labels stay neutral (`hub`, `vm-0-8-ubuntu`, `mipad-linux`); never use machine names that carry corporate identifiers.
-8. Free-tier assistant models are slower and more verbose; measure candidates and keep the fastest, least robotic one.
-9. Latency: `opencode serve` + `opencode run --attach --dir <repo>` removes cold start (measured ~7 s for a warm one-word run); fall back to a plain `opencode run` if the server is down.
-10. Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the configured fallback. Validate the fallback when it changes so a primary outage fails over instead of going dark.
-11. Pinned provider model IDs can be retired without notice; external-model callers keep a configurable model plus a fallback chain rather than one hardcoded ID (grounded in the `gen_image.py` chain).
-12. Image generation has no viable free tier: the keyless free generator was dropped the same day it shipped. Generation runs through the Gemini API in `scripts/gen_image.py` (configurable model; `gemini-3.1-flash-image` -> `gemini-2.5-flash-image` -> `gemini-3-pro-image`; keyed by `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`). A missing or billing-disabled key is a one-line failure, not a stack trace.
-13. Group intake is an owner-driven command, not a config edit: `scripts/wa_group_allow.py` manages `WHATSAPP_GROUP_ALLOWED_USERS` under `WHATSAPP_GROUP_POLICY=allowlist` with the mention gate on; `open`/allow-all is refused and not used; sender gating stays on `WHATSAPP_ALLOWED_USERS` (ADR-024, ADR-028). Person admission stays owner-side on `WHATSAPP_ALLOWED_USERS` (`scripts/whatsapp_group_fix.py --allow-user <digits>`); allowlisting a group does not admit its members, and there is no chat command for numbers (ADR-027, ADR-028, ADR-030).
-14. The anti-leak rule covers tool output and error text, not only persona prose: never print phone numbers, IDs, or JIDs anywhere on the relay surface; name people (ADR-027, ADR-028).
-15. Superseded by 16 - kept as a pointer only: the observe + wake-word design below is not available on this Hermes version and free-response is no longer rejected. Historical entry: "Proactive group presence is observe + wake word, never free-response." Read 16, not this line.
-16. A speaker is not an operator. WhatsApp free-response (`WHATSAPP_FREE_RESPONSE_CHATS`) lets a whole group reach the agent with no @mention and bypasses the per-sender allowlist (`WHATSAPP_ALLOWED_USERS`) for that chat, so the person allowlist is a speaking filter, NOT an execution gate - the ADR-016 unauthenticated-command risk does not close there. The only reliable execution gate is `scripts/wa_owner_gate.py` (ALLOW for `NAQUUUU_WA_OWNER_IDS` owners, DENY otherwise, host env, never in the repo); it must fail closed, so an unset or unreadable owner list denies rather than allows. Observation/thread awareness is Telegram-only on Hermes v0.21.4, so the WhatsApp relay is stateless per turn: each turn sees only the triggering message, and no turn may imply it read the room. When nothing is worth saying, emit `NO_REPLY`. Group admission (`scripts/wa_group_allow.py`) and free-response promotion (`scripts/wa_free_response.py`) are separate, owner-run, host-side commands.
+**IDs.** `L-nn`, permanent, assigned in order, never renumbered or reused. Cite a lesson as `L-nn`, never by ordinal. ADR-030 §Consequences cites "lesson 13" by ordinal; that entry is `L-13`, order unchanged.
+
+**Compaction.** When this file exceeds ~5,000 chars, roll the oldest entries into `internal-docs/lessons/YYYY-MM.md` and keep the recent hot set here. Note: the file is already past that threshold and the archive directory does not exist yet — see open question 1.
+
+L-01. WhatsApp replies must read human (ADR-027): 1-3 sentences, no bullet menus, no preamble, no process/reasoning/tool chatter.
+
+L-02. Never print phone numbers, IDs, or JIDs. WhatsApp mentions arrive as numeric IDs; use the name from the conversation, or say "dia/they", or ask for the name in one line.
+
+L-03. Workspace/agent/project/state questions route through `opencode run`; never answer them from Hermes memory or bundled skills.
+
+L-04. Auto-sync is gate-protected but publishes whatever an agent left behind: an agent edit changed the opencode model pin to an invalid value and it went live (fixed in `8522de0`). Validate config edits — `opencode.jsonc` must parse and use `provider/model` form.
+
+L-05. Only one WhatsApp bridge at a time: `hermes gateway stop` can leave an orphaned `bridge.js`; check port 3000 before starting another host.
+
+L-06. Moving a WhatsApp session: the env transfer must include `WHATSAPP_ENABLED`, and a fresh host needs `npm install` in the bridge directory before its first start.
+
+L-07. Auto-sync commit labels stay neutral (`hub`, `vm-0-8-ubuntu`, `mipad-linux`); never use machine names that carry corporate identifiers.
+
+L-08. Free-tier assistant models are slower and more verbose; measure candidates and keep the fastest, least robotic one.
+
+L-09. Latency: warm `opencode serve` + `opencode run --attach --dir <repo>` is the intended fast path, not an optimisation. On the laptop, a cold `opencode run` of a one-word reply measured 15,177 ms on 2026-09-28, and bare CLI startup (`opencode run --help`) measured 2,097 ms on the same host the same day — so roughly 2.1 s of every cold call is process startup that a warm server removes. The warm one-word figure previously recorded here (~7 s) has no recorded date and no recorded command: UNVERIFIED, not a workspace property. Fall back to a plain `opencode run` if the server is down.
+
+L-10. Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the configured fallback. Validate the fallback when it changes so a primary outage fails over instead of going dark.
+
+L-11. Pinned provider model IDs can be retired without notice; external-model callers keep a configurable model plus a fallback chain rather than one hardcoded ID (grounded in the `gen_image.py` chain).
+
+L-12. Image generation has no viable free tier: the keyless free generator was dropped the same day it shipped. Generation runs through the Gemini API in `scripts/gen_image.py` (configurable model; `gemini-3.1-flash-image` -> `gemini-2.5-flash-image` -> `gemini-3-pro-image`; keyed by `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`). A missing or billing-disabled key is a one-line failure, not a stack trace.
+
+L-13. Group intake is an owner-driven command, not a config edit: `scripts/wa_group_allow.py` manages `WHATSAPP_GROUP_ALLOWED_USERS` under `WHATSAPP_GROUP_POLICY=allowlist` with the mention gate on; `open`/allow-all is refused and not used; sender gating stays on `WHATSAPP_ALLOWED_USERS` (ADR-024, ADR-028). Person admission stays owner-side on `WHATSAPP_ALLOWED_USERS` (`scripts/whatsapp_group_fix.py --allow-user <digits>`); allowlisting a group does not admit its members, and there is no chat command for numbers (ADR-027, ADR-028, ADR-030).
+
+L-14. The anti-leak rule covers tool output and error text, not only persona prose: never print phone numbers, IDs, or JIDs anywhere on the relay surface; name people (ADR-027, ADR-028).
+
+L-15. Superseded by L-16 - kept as a pointer only: the observe + wake-word design below is not available on this Hermes version and free-response is no longer rejected. Historical entry: "Proactive group presence is observe + wake word, never free-response." Read L-16, not this line.
+
+L-16. A speaker is not an operator. WhatsApp free-response (`WHATSAPP_FREE_RESPONSE_CHATS`) lets a whole group reach the agent with no @mention and bypasses the per-sender allowlist (`WHATSAPP_ALLOWED_USERS`) for that chat, so the person allowlist is a speaking filter, NOT an execution gate - the ADR-016 unauthenticated-command risk does not close there. The only reliable execution gate is `scripts/wa_owner_gate.py` (ALLOW for `NAQUUUU_WA_OWNER_IDS` owners, DENY otherwise, host env, never in the repo); it must fail closed, so an unset or unreadable owner list denies rather than allows. Observation/thread awareness is Telegram-only on Hermes v0.21.4, so the WhatsApp relay is stateless per turn: each turn sees only the triggering message, and no turn may imply it read the room. When nothing is worth saying, emit `NO_REPLY`. Group admission (`scripts/wa_group_allow.py`) and free-response promotion (`scripts/wa_free_response.py`) are separate, owner-run, host-side commands.
+
+L-17. Re-pairing is a once-only operation (relay outage, 2026-09-28). `Restart=always` in a systemd unit re-spawns the bridge immediately on failure; combined with a second host also running a bridge on the same WhatsApp session, re-pairing thrash escalated a single logout into a provider rate limit, and the session was quarantined as `session.dead-*`. Recovery order, in this order: (1) disarm the other host's auto-start FIRST, (2) change `Restart=always` to `Restart=on-failure`, (3) attempt pairing exactly ONCE, (4) stop. The repeated retry attempts are what caused the block, not the logout. Pairing artifacts are Tier 1 material: the QR image, the allowed-users prompt, and the digits themselves never enter a chat, a screenshot, or an agent transcript; the owner types the digits directly on the host and the agent never sees them (AGENTS.md Section 3, Model-Input Boundary). Boundary note for the same incident: five phone numbers entered model context via a screenshot. The repo and the commits stayed clean, so the sanitization gate passed — the gate is a git audit, not a model-input firewall, and the boundary was breached anyway. The rule above exists because of that. No ADR is recorded for this incident; ADR-032 is the next free number and is written separately (forthcoming) — do not assume it covers this entry.
+
+## Open questions
+
+1. First compaction pass: which entries move to `internal-docs/lessons/2026-09.md`, and does ADR-030's ordinal citation get restated as `L-13`? Not performed here — moving entries would change which `L-nn` resolves in the hot slice. Owner call.
+2. Resolved 2026-09-28: the recovery order in `L-17` now lives in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`, section "Relay recovery (2026-09-28 outage)", together with a symptom-to-cause table. It remains derived from one observed incident, not a rehearsed procedure - treat it as the documented intent and re-verify after the next real recovery.

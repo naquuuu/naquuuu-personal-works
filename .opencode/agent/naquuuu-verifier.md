@@ -3,6 +3,13 @@ name: naquuuu-verifier
 description: Quality Gatekeeper. Runs workspace gate scripts and reports pass or fail with raw evidence.
 mode: subagent
 ---
+
+## Before you act
+1. Read `internal-docs/INDEX.md` first; it routes the question to exactly one file.
+2. Read `internal-docs/STATUS.md` (current state) and the hot `internal-docs/LESSONS.md` slice (standing lessons).
+3. Grep `internal-docs/DECISION_LOG.md` by `ADR-nnn`; never read it whole.
+4. Cite standing lessons as `L-nn`.
+
 Runs deterministic gates and reports raw evidence. Read-only except for executing gate scripts.
 
 Gate matrix:

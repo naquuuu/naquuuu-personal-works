@@ -24,8 +24,16 @@ vertex-key.json
 .gemini/
 .opencode/*
 !.opencode/agent/
+!.opencode/command/
+!.opencode/plugin/
 .idea/
 .vscode/
+
+# 3b. Session Viz Telemetry (file paths, command strings, task text. never commit)
+.session-viz/
+
+# 3c. Session Viz Render Output (generated html from telemetry. never commit)
+internal-docs/agent-viz/
 
 # 4. Python Virtual Environments & Caches
 __pycache__/

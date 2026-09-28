@@ -79,6 +79,12 @@ git clone https://github.com/naquuuu/naquuuu-personal-works.git ~/naquuuu
 - Owner-side provider auth for opencode.
 - Smoke test (no writes, no commits): `cd ~/naquuuu && opencode run --agent naquuuubot "Reply with the current branch."`
 
+Gate arming (relay host — this host pushes to a public remote):
+
+1. `cd ~/naquuuu && git config core.hooksPath .githooks` — the same line `scripts/provision_home_server.sh` sets for the home server. The VPS path had no step for it.
+2. `sudo apt install -y python3` — the Step 1 package list does not install it, and the sanitization gate cannot run on this host without an interpreter.
+3. One-command form of both: `./scripts/enable_gates.sh` (add `--check` for a read-only status run). Re-run it after any re-clone; an unarmed host is a push-capable writer with no gate.
+
 ### Heavy jobs (M2, pending)
 
 - M1 runs every job locally on the VPS. M2 (authored, Proposed - ADR-029) adds `scripts/dispatch_job.sh`: heavy jobs go to the home server (`mipad-linux`) over Tailscale using the dedicated relay-to-worker key (`NAQUUUU_WORKER_KEY`) and queue durably when the worker is offline; light work stays local. Queued output is archived under `done/` and summarized by `scripts/job_status.sh`; the relay skill is not yet wired to poll the queue (no automatic reply).
@@ -119,6 +125,53 @@ flowchart LR
 2. Restore the laptop session copy if needed.
 3. Start the laptop gateway.
 4. Verify with a phone "hello".
+
+## Relay recovery (2026-09-28 outage)
+
+This section is the recovery procedure for a lost or contested WhatsApp session on the relay host. It is written for the failure as observed, not for a hypothetical one.
+
+**Incident as recorded (2026-09-28).** The WhatsApp session was quarantined as `session.dead-<timestamp>`; the replacement session was left unpaired; the Hermes gateway was stopped; the systemd unit still carried `Restart=always`. Two root causes, in order of importance:
+
+1. **A second host was still running a bridge.** ADR-026 moved the relay to the VPS, but the laptop's Hermes gateway auto-start (a Startup-folder `Hermes_Gateway.vbs`) was never disarmed, so after any login a second host could run a bridge against the same WhatsApp account.
+2. **`Restart=always` re-spawned the bridge immediately on failure.** Each re-pair attempt compounded the previous one and escalated a single logout into a provider rate limit.
+
+**The order is the fix.** Perform the steps in the order written. The order was the defect; a correct step performed out of order reintroduces the fault.
+
+0. **Stop retrying.** The repeated attempts are what caused the block, not the logout. Wait out the provider rate-limit window before touching anything else. No window length is recorded here; use what the provider itself reports.
+1. **Disarm every OTHER host's bridge auto-start first.** On the Windows laptop that is the Startup-folder `Hermes_Gateway.vbs` entry. Then verify nothing else holds the session: no `hermes` process on any other host, and nothing listening on port 3000.
+2. **Change `Restart=always` to `Restart=on-failure` on the relay host.** Use a systemd drop-in, non-interactive:
+
+   ```bash
+   mkdir -p ~/.config/systemd/user/hermes-gateway.service.d
+   printf '[Service]\nRestart=on-failure\nRestartSec=30\n' > ~/.config/systemd/user/hermes-gateway.service.d/restart.conf
+   systemctl --user daemon-reload
+   ```
+
+   Assumption: the unit is named `hermes-gateway.service`. Confirm the real name first with `systemctl --user list-units | grep -i hermes` and use the name the unit actually has. `RestartSec=30` is a deliberate addition in this procedure (backoff, so a crash cannot spin) and was **not** part of the original defect.
+3. **Arm the git gates on the host BEFORE pairing.** From the repo root run `sh scripts/enable_gates.sh` (`./scripts/enable_gates.sh` where the exec bit is set; `--check` is a read-only status run that changes nothing).
+
+   Why it is on this list: the relay host is a push-capable scoped writer to a public remote (ADR-026). Unlike the home server — which is provisioned with `git config core.hooksPath .githooks` by `scripts/provision_home_server.sh` — the VPS provisioning path never set `core.hooksPath`, and the Step 1 package list does not install `python3`. With no hooks path armed and no interpreter present, `scripts/node_autosync.sh` previously skipped the sanitization gate entirely and still ran `git add -A`. After the ADR-032-era fixes that script fails closed, so an unarmed host now refuses to commit rather than committing ungated. Arm the gate before this host is allowed to write.
+4. **Verify the owner-gate wiring BEFORE pairing.** A failure here is misread as a failed pairing, so rule it out first. `scripts/wa_owner_gate.py` reads `NAQUUUU_WA_OWNER_IDS` from the **process environment** of the gate invocation, while the documented place to set it on the relay host is `~/.hermes/.env` (see `Group presence (owner-run)` §2). If the gateway does not export that file into the assistant's tool subprocess, the owner list resolves empty, every sender is DENIED, and the assistant replies conversationally while executing nothing — including for the owner.
+
+   Symptom to confirm before pairing: the owner sends a task and receives a chatty reply with no work done. Note that running the gate from a plain SSH shell only proves the shell environment, not the tool subprocess; the export into the subprocess is the part that must be confirmed.
+5. **Pair exactly ONCE.** The digits are typed directly on the host by the owner. See the Tier 1 note below.
+6. **Stop.** Then verify all four: gateway status; one owner message that must execute; one guest message that must chat but execute nothing; one mention-only group that must stay silent (`Group presence (owner-run)` §4).
+
+### Tier 1 note — pairing artifacts
+
+The QR image, the allowed-users prompt, and the digits themselves are Tier 1 material. They never enter a chat, a screenshot, or an agent transcript. **The owner types the digits on the host; the agent never sees them.**
+
+Boundary note from this incident: five phone numbers reached model context through a screenshot, while the repository and the commits stayed clean. The sanitization gate is a git audit, not a model-input firewall — a clean gate is **not** evidence that the boundary held. See `L-17` and AGENTS.md Section 3, Model-Input Boundary.
+
+### Symptom to cause
+
+| Symptom | Cause |
+| :--- | :--- |
+| Session unpaired and the gateway stopped | A bridge was lost, or a second host contested the session. |
+| `session.dead-<timestamp>` present | The session was quarantined. Do not delete it — it is the forensic record. |
+| Re-pairing appears to work, then fails again | A second host is still running a bridge, or `Restart=always` is still set. |
+| The assistant chats but never executes | The owner gate is denying. See step 4. |
+| Repeated pairing attempts produce a block | The rate limit is the cause. Stop and wait. |
 
 ## Group presence (owner-run)
 
