@@ -39,7 +39,7 @@ Implemented host-only display-name cache, outbound identifier rejection, and own
 ### Files Changed
 `scripts/wa_chat_policy.py`, installer and synthetic tests.
 ### Evidence
-Initial eight tests passed; alias review expanded the matrix to ten. The implementation uses bridge context, never typed identities. Pending deployment evidence is separate from policy acceptance.
+Initial eight tests passed; alias review expanded the matrix to ten. The implementation uses bridge context, never typed identities. Installed into the pinned adapter and bridge; after restarting once, gateway was active with zero restarts and the bridge health endpoint reported connected. No live phone command matrix was available, so chat behavior remains unverified.
 ### Blockers
 No promoted test group was specified. Unprompted native mention and phone-only add/remove matrix are not claimed. No guest was seeded from blank credentials.
 
