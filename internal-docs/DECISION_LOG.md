@@ -480,7 +480,7 @@ This log records major technical and structural decisions made across personal p
 
 ## ADR-029: M2 — Worker Dispatch and Durable Queue (VPS → Home Server)
 - **Date**: 2026-09-25
-- **Status**: Proposed (scripts authored; worker SSH trust pending owner authorization; owner approval required before live wiring)
+- **Status**: Approved 2026-09-28 by owner; activating (worker SSH trust + relay-skill wiring in progress; was Proposed with scripts authored)
 - **Context**: The VPS relay (2 vCPU / 2 GB) is the always-on WhatsApp front door but is too small for heavy dev jobs. The home server (`mipad-linux`, i5-8250U / 8 GB) is an onboarded synced replica and the M2 worker candidate (ADR-026). Heavy jobs should run on the worker over Tailscale and must survive the worker being offline.
 - **Decision (proposed)**:
   1. **Dispatch**: `scripts/dispatch_job.sh` runs on the relay host; heavy engineering tasks go to the worker over SSH when reachable, and are enqueued durably when not. `--local` keeps light work on the relay host (RELAY_PLAN §1).
