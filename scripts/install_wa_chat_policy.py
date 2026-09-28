@@ -41,9 +41,9 @@ from wa_chat_policy import host_policy as _wa_policy
                                 await self.send(str(msg_data.get("chatId") or ""), answer)
                                 continue
                             event = await self._build_message_event(msg_data)''')
-    text = one(text, '            async with self._bridge_req("post", path, timeout, json=payload) as resp:', '            payload = _wa_policy().outbound(payload)\n            async with self._bridge_req("post", path, timeout, json=payload) as resp:')
+    text = one(text, '            async with self._bridge_req("post", path, timeout, json=payload) as resp:', '            payload = _wa_policy().outbound(payload)\n            if not payload:\n                return\n            async with self._bridge_req("post", path, timeout, json=payload) as resp:')
     text = one(text, '            async with self._bridge_req("post", "edit", 15, json={"chatId": to_whatsapp_jid(chat_id), "messageId": message_id, "message": content}) as resp:', '            content = _wa_policy().scrub(content)\n            async with self._bridge_req("post", "edit", 15, json={"chatId": to_whatsapp_jid(chat_id), "messageId": message_id, "message": content}) as resp:')
-    text = one(text, '                url = f"http://localhost:{bridge_port}/{path}"', '                payload = _wa_policy().outbound(payload, proactive=True)\n                url = f"http://localhost:{bridge_port}/{path}"')
+    text = one(text, '                url = f"http://localhost:{bridge_port}/{path}"', '                payload = _wa_policy().outbound(payload, proactive=True)\n                if not payload:\n                    return\n                url = f"http://localhost:{bridge_port}/{path}"')
     return text
 
 

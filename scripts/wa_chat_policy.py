@@ -14,6 +14,7 @@ import shutil
 import tempfile
 import threading
 
+from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY
 from wa_owner_gate import evaluate, is_sender_id, digits_only
 
 GROUPS = 'WHATSAPP_GROUP_ALLOWED_USERS'
@@ -52,6 +53,7 @@ class ChatPolicy:
         self.env_path = env_path
         self.cache_path = cache_path
         self.names: dict[str, str] = {}
+        self.active_turns: dict[str, dict] = {}
         try:
             saved = json.loads(cache_path.read_text(encoding='utf-8'))
             if isinstance(saved, dict):
@@ -63,6 +65,17 @@ class ChatPolicy:
     def safe_name(name: str) -> bool:
         return bool(name.strip()) and len(name) <= 100 and not RAW_RE.search(name) and not any(ord(c) < 32 for c in name)
 
+    @staticmethod
+    def is_status_message(text: str) -> bool:
+        norm = " ".join(text.strip().lower().split())
+        return norm in {
+            "masih aku kerjakan.",
+            "masih aku kerjakan",
+            "working on it...",
+            "still working on it...",
+            "processing...",
+        }
+
     def observe(self, event: dict) -> None:
         """Bridge-sourced name only. Never infer names from message text."""
         sender, name = str(event.get('senderId') or ''), str(event.get('senderName') or '')
@@ -71,8 +84,19 @@ class ChatPolicy:
                 self.names[sender] = name.strip()
                 self.names[digits_only(sender)] = name.strip()
                 _atomic(self.cache_path, json.dumps(self.names, ensure_ascii=False))
+        chat_id = str(event.get('chatId') or '')
+        if chat_id:
+            with LOCK:
+                self.active_turns[chat_id] = {
+                    'status_sent': False,
+                    'started_at': dt.datetime.now(dt.timezone.utc),
+                }
 
     def scrub(self, text: str) -> str:
+        sanitized, is_clean = sanitize_outbound_text(text)
+        if not is_clean:
+            return SAFE_FALLBACK_REPLY
+
         def replace(match: re.Match) -> str:
             raw = match[0]
             # A real ISO calendar date is operational text, not a phone ID.
@@ -86,7 +110,7 @@ class ChatPolicy:
             if not name or not self.safe_name(name):
                 raise ValueError('Unresolved identity; delivery refused.')
             return ('@' if raw.startswith('@') else '') + name
-        return RAW_RE.sub(replace, text)
+        return RAW_RE.sub(replace, sanitized)
 
     def promoted(self, chat_id: str) -> bool:
         text = self.env_path.read_text(encoding='utf-8')
@@ -94,8 +118,19 @@ class ChatPolicy:
 
     def outbound(self, payload: dict, *, proactive: bool = False) -> dict:
         """Keep routing IDs host-side; scrub every user-visible text field."""
-        if proactive and not self.promoted(str(payload.get('chatId') or '')):
+        chat_id = str(payload.get('chatId') or '')
+        if proactive and not self.promoted(chat_id):
             raise ValueError('Initiation is limited to promoted groups.')
+
+        msg = str(payload.get('message') or '')
+        if self.is_status_message(msg):
+            with LOCK:
+                turn = self.active_turns.get(chat_id)
+                if turn and turn.get('status_sent'):
+                    return {}
+                if turn:
+                    turn['status_sent'] = True
+
         result = dict(payload)
         for key in ('message', 'caption', 'question', 'fileName', 'name', 'address'):
             if isinstance(result.get(key), str):

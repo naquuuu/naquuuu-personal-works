@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from relay_outbound import SAFE_FALLBACK_REPLY
 from wa_chat_policy import ChatPolicy, GROUPS, PEOPLE, PROMOTED
 
 OWNER = '10000001'
@@ -114,6 +115,51 @@ class PolicyTests(unittest.TestCase):
         for raw in ['10000003', '+10000003', '@10000003', '1000-00-03', '10000003@lid']:
             with self.assertRaises(ValueError):
                 self.policy.scrub(raw)
+
+    def test_outbound_leak_and_draft_rejected(self):
+        draft_payload = {
+            'chatId': GROUP,
+            'message': '<think>User is asking about servers.</think>Semua server aktif.',
+        }
+        res = self.policy.outbound(draft_payload)
+        self.assertEqual(res['message'], SAFE_FALLBACK_REPLY)
+
+        harness_payload = {
+            'chatId': GROUP,
+            'message': 'System Note: This conversation is happening via WhatsApp. inspect VERY FIRST TOOL RESULT.',
+        }
+        res2 = self.policy.outbound(harness_payload)
+        self.assertEqual(res2['message'], SAFE_FALLBACK_REPLY)
+
+    def test_one_status_per_request_turn(self):
+        self.policy.observe(dict(chatId=GROUP, senderId=OWNER))
+
+        # First status message passes through
+        first_status = self.policy.outbound({'chatId': GROUP, 'message': 'masih aku kerjakan.'})
+        self.assertEqual(first_status.get('message'), 'masih aku kerjakan.')
+
+        # Second status message in the same request turn is suppressed (returns empty dict)
+        second_status = self.policy.outbound({'chatId': GROUP, 'message': 'masih aku kerjakan.'})
+        self.assertEqual(second_status, {})
+
+        # Final answer passes through
+        final_answer = self.policy.outbound({'chatId': GROUP, 'message': 'Sudah selesai diperiksa.'})
+        self.assertEqual(final_answer.get('message'), 'Sudah selesai diperiksa.')
+
+    def test_repetition_loop_in_chat_rejected(self):
+        looped = (
+            'Tunggu sebentar ya kawan. '
+            'Tunggu sebentar ya kawan. '
+            'Tunggu sebentar ya kawan.'
+        )
+        res = self.policy.outbound({'chatId': GROUP, 'message': looped})
+        self.assertEqual(res['message'], SAFE_FALLBACK_REPLY)
+
+    def test_indonesian_slang_and_factual_bot_response_allowed(self):
+        valid_response = 'Nggak, gue bot—nggak punya tubuh atau pengalaman begitu.'
+        res = self.policy.outbound({'chatId': GROUP, 'message': valid_response})
+        self.assertEqual(res['message'], valid_response)
+
 
 if __name__ == '__main__':
     unittest.main()

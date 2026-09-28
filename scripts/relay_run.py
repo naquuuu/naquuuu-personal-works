@@ -9,6 +9,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
+from relay_outbound import sanitize_relay_events
+
 
 def server_env() -> dict:
     env = os.environ.copy()
@@ -60,8 +63,8 @@ def main() -> int:
             except ValueError:
                 pass
         if result.returncode == 0 and not any(e.get('type') == 'error' for e in events):
-            texts = [e.get('part', {}).get('text', '') for e in events if e.get('type') == 'text']
-            if path and events:
+            reply, is_clean = sanitize_relay_events(events)
+            if path and events and is_clean:
                 cache.mkdir(parents=True, exist_ok=True, mode=0o700)
                 sid = next((e.get('sessionID') for e in events if e.get('sessionID')), None)
                 if sid:
@@ -69,7 +72,7 @@ def main() -> int:
                     with os.fdopen(fd, 'w') as out:
                         json.dump({'session': sid}, out)
                     os.replace(temp, path)
-            print('\n'.join(texts) or 'Selesai.')
+            print(reply or 'Selesai.')
             return 0
         # Fall back only if the server rejected before any execution event.
         if events or index:
