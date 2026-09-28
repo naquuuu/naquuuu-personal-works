@@ -172,6 +172,14 @@ Boundary note from this incident: five phone numbers reached model context throu
 | Re-pairing appears to work, then fails again | A second host is still running a bridge, or `Restart=always` is still set. |
 | The assistant chats but never executes | The owner gate is denying. See step 4. |
 | Repeated pairing attempts produce a block | The rate limit is the cause. Stop and wait. |
+| connect times out, bridge binds fine | Raise the connect budget first (see findings below), then suspect a stale session and re-pair once. |
+
+### Findings that cost the most time (2026-09-28 recovery)
+
+1. Update rewrites the unit to an isolated shim. New launcher `hermes-agent/.hermes/bin/hermes` is created during update and runs with `-I`, so the venv is invisible to it. After any update run `systemctl --user show hermes-gateway.service -p ExecStart` before trusting a start; the fix is an `ExecStart` drop-in back to `venv/bin/python -m hermes_cli.main gateway run`.
+2. Do not override `PATH` in the drop-in. The stock unit `PATH` carries Hermes bundled Node (`~/.hermes/node/bin`); replacing it hides `node` and the bridge dies with `did not start`. Override `ExecStart` only and inherit the rest.
+3. A stray gateway turns every fresh start into a no-op. Any stray PID serving the host makes a new start exit 75 in under a second. Before starting check `ss -tln | grep 3000`, `pgrep -af bridge`, and `systemctl --user is-active hermes-gateway.service`; kill strays first.
+4. Small-host timeouts: env first (see `L-19`). Bridge poll is `_poll_bridge_health` (`for attempt in range(15)` -> `range(90)`); connect is `_connect_adapter_with_timeout` (default `_PLATFORM_CONNECT_TIMEOUT_SECS_DEFAULT`, 30s) honoured via `HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT` in `gateway/run_adapters.py:145-162`. Mandatory pre-launch: `echo ${HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT:-UNSET}` — UNSET means silently on the default; a code patch is wiped by the next update.
 
 ## Group presence (owner-run)
 
