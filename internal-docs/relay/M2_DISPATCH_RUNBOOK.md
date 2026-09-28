@@ -1,7 +1,7 @@
 # M2 Dispatch Runbook (Worker + Durable Queue)
 
 - Purpose: run heavy engineering jobs on the home server (`mipad-linux`) instead of the 2 vCPU / 2 GB relay host, and not lose jobs in the tested paths when the worker is offline.
-- Status: **Proposed - authored, NOT live** (ADR-029). Pending the owner-run worker SSH trust (`scripts/authorize_worker.sh`) and owner approval. Until both land, the relay skill runs heavy jobs locally as in M1.
+- Status: **Approved and partially staged (2026-09-28)** (ADR-029). Drain timer active; an isolated offline-queue test passed. Worker SSH trust is still blocked by login authentication, so no real worker execution has passed and the relay skill remains local for heavy work.
 - Related: `internal-docs/DECISION_LOG.md` ADR-026, ADR-027, ADR-028, ADR-029 (root-owned context only; this runbook does not depend on it for the interface facts below); `internal-docs/HOSTS.md` Sections 1-3 and 9; `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; `internal-docs/relay/RELAY_PLAN.md`; `internal-docs/TAILSCALE_ACL.md`.
 - Scope: M2 = the relay host dispatches heavy jobs to the worker over Tailscale and queues them durably when the worker is unreachable. Light work stays on the relay host.
 - Non-goals: the worker is expected not to commit or push. That is a policy expectation, not an enforced mechanism: the worker clone is a replica without push credentials (a push cannot succeed), but a commit is not a security boundary. Auto-sync owns convergence (ADR-025/ADR-026). DO Managed Agents stays behind the Phase 4 gate set (`HOSTS.md` Section 9).

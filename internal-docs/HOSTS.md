@@ -1,13 +1,13 @@
 # Host Topology and Switch Runbook (HOSTS.md)
 
 - Date: 2026-09-25
-- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. M2 worker dispatch is authored and Proposed (ADR-029) - pending worker SSH trust and owner approval, not live. Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`), not applied. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
+- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. M2 is approved and partially staged (ADR-029): drain timer and offline queue test are ready, but worker SSH authentication blocks key authorization and real execution. Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`), not applied. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
 - Scope: host classes, topology, credential boundaries, bootstrap, authority, switch/failover, readiness, and remote access.
 - Related: spec Sections 4 and 10; ADR-011 through ADR-029; the Phase 4 research doc.
 
 ## 1. Topology Overview
 
-The VPS is the live relay host (M1 complete 2026-09-25, ADR-026) and a repo-scoped writer; the laptop remains a workstation/co-writer. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The phone is a client only. Node trees converge through the ADR-025 auto-sync. M2 (ADR-029) is authored and Proposed: the VPS relay will dispatch heavy jobs to the home server over Tailscale and queue them durably when the worker is offline; it is not live until the worker SSH trust is authorized and the owner approves.
+The VPS is the live relay host (M1 complete 2026-09-25, ADR-026) and a repo-scoped writer; the laptop remains a workstation/co-writer. M2 is approved but partial: drain timer and offline queue test are ready, while worker key authorization and execution remain blocked by worker login authentication. DO sessions are disposable execution and never hold authority; there is no inbound connectivity to DO. The phone is a client only. Node trees converge through ADR-025 auto-sync.
 
 The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the relay moved to a plain droplet/VPS (Tailscale + systemd, flat cost) for availability, while DO Managed Agents is used only as a sandboxed worker after the Phase 4 gate set passes. A preview failure on DO cannot take the relay down.
 

@@ -1,49 +1,13 @@
 # Lessons (curated)
-<!-- verified-against: ADR-033 -->
+<!-- verified-against: ADR-034 -->
 
 Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything. Route through `internal-docs/INDEX.md` first; this file is the hot slice, not the archive.
 
 **IDs.** `L-nn`, permanent, assigned in order, never renumbered or reused. Cite a lesson as `L-nn`, never by ordinal. ADR-030 §Consequences cites "lesson 13" by ordinal; that entry is `L-13`, order unchanged.
 
-**Compaction.** When this file exceeds ~5,000 chars, roll the oldest entries into `internal-docs/lessons/YYYY-MM.md` and keep the recent hot set here. Note: the file is already past that threshold and the archive directory does not exist yet — see open question 1.
+**Compaction.** When this file exceeds ~5,000 chars, roll the oldest entries into `internal-docs/lessons/YYYY-MM.md` and keep the recent hot set here. The first compaction moved L-01 through L-19 to the September archive on 2026-09-28.
 
-L-01. WhatsApp replies must read human (ADR-027): 1-3 sentences, no bullet menus, no preamble, no process/reasoning/tool chatter.
-
-L-02. Never print phone numbers, IDs, or JIDs. WhatsApp mentions arrive as numeric IDs; use the name from the conversation, or say "dia/they", or ask for the name in one line.
-
-L-03. Workspace/agent/project/state questions route through `opencode run`; never answer them from Hermes memory or bundled skills.
-
-L-04. Auto-sync is gate-protected but publishes whatever an agent left behind: an agent edit changed the opencode model pin to an invalid value and it went live (fixed in `8522de0`). Validate config edits — `opencode.jsonc` must parse and use `provider/model` form.
-
-L-05. Only one WhatsApp bridge at a time: `hermes gateway stop` can leave an orphaned `bridge.js`; check port 3000 before starting another host.
-
-L-06. Moving a WhatsApp session: the env transfer must include `WHATSAPP_ENABLED`, and a fresh host needs `npm install` in the bridge directory before its first start.
-
-L-07. Auto-sync commit labels stay neutral (`hub`, `vm-0-8-ubuntu`, `mipad-linux`); never use machine names that carry corporate identifiers.
-
-L-08. Free-tier assistant models are slower and more verbose; measure candidates and keep the fastest, least robotic one.
-
-L-09. Latency: warm `opencode serve` + `opencode run --attach --dir <repo>` is the intended fast path, not an optimisation. On the laptop, a cold `opencode run` of a one-word reply measured 15,177 ms on 2026-09-28, and bare CLI startup (`opencode run --help`) measured 2,097 ms on the same host the same day — so roughly 2.1 s of every cold call is process startup that a warm server removes. The warm one-word figure previously recorded here (~7 s) has no recorded date and no recorded command: UNVERIFIED, not a workspace property. Fall back to a plain `opencode run` if the server is down.
-
-L-10. Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the configured fallback. Validate the fallback when it changes so a primary outage fails over instead of going dark.
-
-L-11. Pinned provider model IDs can be retired without notice; external-model callers keep a configurable model plus a fallback chain rather than one hardcoded ID (grounded in the `gen_image.py` chain).
-
-L-12. Image generation has no viable free tier: the keyless free generator was dropped the same day it shipped. Generation runs through the Gemini API in `scripts/gen_image.py` (configurable model; `gemini-3.1-flash-image` -> `gemini-2.5-flash-image` -> `gemini-3-pro-image`; keyed by `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`). A missing or billing-disabled key is a one-line failure, not a stack trace.
-
-L-13. Group intake is an owner-driven command, not a config edit: `scripts/wa_group_allow.py` manages `WHATSAPP_GROUP_ALLOWED_USERS` under `WHATSAPP_GROUP_POLICY=allowlist` with the mention gate on; `open`/allow-all is refused and not used; sender gating stays on `WHATSAPP_ALLOWED_USERS` (ADR-024, ADR-028). Person admission stays owner-side on `WHATSAPP_ALLOWED_USERS` (`scripts/whatsapp_group_fix.py --allow-user <digits>`); allowlisting a group does not admit its members, and there is no chat command for numbers (ADR-027, ADR-028, ADR-030).
-
-L-14. The anti-leak rule covers tool output and error text, not only persona prose: never print phone numbers, IDs, or JIDs anywhere on the relay surface; name people (ADR-027, ADR-028).
-
-L-15. Superseded by L-16 - kept as a pointer only: the observe + wake-word design below is not available on this Hermes version and free-response is no longer rejected. Historical entry: "Proactive group presence is observe + wake word, never free-response." Read L-16, not this line.
-
-L-16. A speaker is not an operator. WhatsApp free-response (`WHATSAPP_FREE_RESPONSE_CHATS`) lets a whole group reach the agent with no @mention and bypasses the per-sender allowlist (`WHATSAPP_ALLOWED_USERS`) for that chat, so the person allowlist is a speaking filter, NOT an execution gate - the ADR-016 unauthenticated-command risk does not close there. The only reliable execution gate is `scripts/wa_owner_gate.py` (ALLOW for `NAQUUUU_WA_OWNER_IDS` owners, DENY otherwise, host env, never in the repo); it must fail closed, so an unset or unreadable owner list denies rather than allows. Observation/thread awareness is Telegram-only on Hermes v0.21.4, so the WhatsApp relay is stateless per turn: each turn sees only the triggering message, and no turn may imply it read the room. When nothing is worth saying, emit `NO_REPLY`. Group admission (`scripts/wa_group_allow.py`) and free-response promotion (`scripts/wa_free_response.py`) are separate, owner-run, host-side commands.
-
-L-17. Re-pairing is a once-only operation (relay outage, 2026-09-28). `Restart=always` in a systemd unit re-spawns the bridge immediately on failure; combined with a second host also running a bridge on the same WhatsApp session, re-pairing thrash escalated a single logout into a provider rate limit, and the session was quarantined as `session.dead-*`. Recovery order, in this order: (1) disarm the other host's auto-start FIRST, (2) change `Restart=always` to `Restart=on-failure`, (3) attempt pairing exactly ONCE, (4) stop. The repeated retry attempts are what caused the block, not the logout. Pairing artifacts are Tier 1 material: the QR image, the allowed-users prompt, and the digits themselves never enter a chat, a screenshot, or an agent transcript; the owner types the digits directly on the host and the agent never sees them (AGENTS.md Section 3, Model-Input Boundary). Boundary note for the same incident: five phone numbers entered model context via a screenshot. The repo and the commits stayed clean, so the sanitization gate passed — the gate is a git audit, not a model-input firewall, and the boundary was breached anyway. The rule above exists because of that. No ADR is recorded for this incident; ADR-033 is the newest ADR and ADR-032 is the web-terminal decision — do not assume either covers this entry.
-
-L-18. Never update a host mid-recovery; snapshot first (relay recovery, 2026-09-28). An `hermes update` failing mid-flight leaves a rewritten systemd unit pointing at an environment it never built: new launcher at `hermes-agent/.hermes/bin/hermes` (isolated-mode Python, no packages), updated code whose lockfile the wrapper refuses to satisfy (`uv sync --locked` fails on a correct lock because the wrapper checks a different context). Symptoms: `ModuleNotFoundError` for modules that ARE installed, `no dependency environment is committed`, every repair path (`pm repair`, `update`) failing identically. Fix used: revert the code to the pre-update commit found via `git reflog` (was `ecacf3d0c9`), rebuild the venv with `UV_PROJECT_ENVIRONMENT=venv uv sync` targeted at the right project dir, and point the unit back at the venv interpreter via an `ExecStart` override. Rule: never update a host whose service is mid-recovery; snapshot first, verify the dependency step completes, and check what the unit actually executes (not just what the code says) before trusting a start.
-
-L-19. Budget small-host timeouts via env, not code patches (relay recovery, 2026-09-28, 2 GB VPS). Two hard-coded ceilings in the WhatsApp adapter killed a working relay: a 15-second bridge poll (`_poll_bridge_health`, `for attempt in range(15)`) and a 30-second connect (`_connect_adapter_with_timeout`, default `_PLATFORM_CONNECT_TIMEOUT_SECS_DEFAULT`). Both were outlasted by a healthy bridge that simply needs longer. Fixes: patch the poll to `range(90)` (one-line sed, backup first; the failure string still says "15s", so read the loop not the message), and prefer the env override `HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT` honoured by `_platform_connect_timeout_secs` (`gateway/run_adapters.py:145-162`) — if visible it wins; verify with `echo ${HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT:-UNSET}` before launching, because every attempt that printed UNSET was silently on the 30s default. Rule: prefer env overrides over code patches — a patch is wiped by the next update. Cause is per-host hardware reality (2 GB), not the software.
+Archived L-01 through L-19: [September archive](lessons/2026-09.md). IDs remain permanent.
 
 L-20. Verify adapter dependencies before extending timeouts (Astra recovery, 2026-09-28). The live gateway already had `HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT=180` in both its process environment and persistent drop-in. Its venv lacked `aiohttp`; `_poll_bridge_health` swallowed the import error and reported an HTTP startup timeout while the Node bridge connected successfully. Installed the checkout-pinned `aiohttp==3.14.3` into the existing venv and restarted the service. At 19:32:48 WIB the gateway logged `whatsapp connected`, followed by `Gateway running with 1 platform(s)` at 19:32:49. This corrects L-19's unproven hardware-only diagnosis and completes L-18's dependency recovery for bridge health polling. No code update or re-pair was needed. Phone message round-trip remains pending owner verification.
 
@@ -51,5 +15,5 @@ L-21. Relay verified end to end (2026-09-28, evening). Owner message round-trip 
 
 ## Open questions
 
-1. First compaction pass: which entries move to `internal-docs/lessons/2026-09.md`, and does ADR-030's ordinal citation get restated as `L-13`? Not performed here — moving entries would change which `L-nn` resolves in the hot slice. Owner call.
+1. Compaction completed 2026-09-28 under ASTRA_ONESHOT authorization; L-01 through L-19 moved with stable IDs and L-13 remains resolvable in the archive.
 2. Resolved 2026-09-28: the recovery order in `L-17` now lives in `internal-docs/relay/VPS_RELAY_RUNBOOK.md`, section "Relay recovery (2026-09-28 outage)", together with a symptom-to-cause table. It remains derived from one observed incident, not a rehearsed procedure - treat it as the documented intent and re-verify after the next real recovery.

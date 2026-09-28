@@ -148,6 +148,8 @@ Touch only what is requested. Don't add unsolicited refactors to adjacent code. 
 ### Goal-Driven Execution
 Every task gets clear success criteria: `1. [Step] → verify: [check]`. Loop until verified with working code.
 
+At the end of a multi-step session, run `/agent-viz --serve` without `--out` for private review; export only after checking the rendered view for identifiers, credentials, and gate violations.
+
 ### Concise Output
 Lead with action. Number steps. Cap lists at 5 items. No unnecessary conversational filler.
 

@@ -54,7 +54,7 @@ def bridge_patch(text: str) -> str:
     text = one(text, "const ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');", "let ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_ALLOWED_USERS || '');")
     text = one(text, "const GROUP_ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_GROUP_ALLOWED_USERS || '');", "let GROUP_ALLOWED_USERS = parseAllowedUsers(process.env.WHATSAPP_GROUP_ALLOWED_USERS || '');")
     anchor = '        const intakeAllowed = isGroup'
-    text = one(text, anchor, '''        // NAQUUUU_CHAT_POLICY_V1
+    text = one(text, anchor, r'''        // NAQUUUU_CHAT_POLICY_V1
         // Refresh host-only lists after authenticated Python command mutations.
         let policyOwners = [];
         try {
@@ -64,15 +64,15 @@ def bridge_patch(text: str) -> str:
             : path.join(process.env.HOME, '.hermes', '.env');
           const envText = readFileSync(envFile, 'utf8');
           const values = {};
-          for (const line of envText.split(/\\r?\\n/)) {
-            const m = line.match(/^\\s*(?:export\\s+)?(WHATSAPP_ALLOWED_USERS|WHATSAPP_GROUP_ALLOWED_USERS|NAQUUUU_WA_OWNER_IDS)\\s*=\\s*(.*)$/);
+          for (const line of envText.split(/\r?\n/)) {
+            const m = line.match(/^\s*(?:export\s+)?(WHATSAPP_ALLOWED_USERS|WHATSAPP_GROUP_ALLOWED_USERS|NAQUUUU_WA_OWNER_IDS)\s*=\s*(.*)$/);
             if (m) values[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, '');
           }
           ALLOWED_USERS = parseAllowedUsers(values.WHATSAPP_ALLOWED_USERS || '');
           GROUP_ALLOWED_USERS = parseAllowedUsers(values.WHATSAPP_GROUP_ALLOWED_USERS || '');
           const candidates = (values.NAQUUUU_WA_OWNER_IDS || '').split(',').map(x => x.trim());
           if (!candidates.some(x => ['*', 'all', 'any', 'everyone', 'open'].includes(x.toLowerCase())))
-            policyOwners = candidates.filter(x => /^\\+?[0-9]+(@(s\\.whatsapp\\.net|lid))?$/.test(x)).map(x => x.replace(/\\D/g, ''));
+            policyOwners = candidates.filter(x => /^\+?[0-9]+(@(s\.whatsapp\.net|lid))?$/.test(x)).map(x => x.replace(/\D/g, ''));
         } catch {
           ALLOWED_USERS = parseAllowedUsers('');
           GROUP_ALLOWED_USERS = parseAllowedUsers('');
@@ -81,8 +81,8 @@ def bridge_patch(text: str) -> str:
         // Python still runs wa_owner_gate before parsing and normal message gates afterwards.
         const policyOwner = [senderId, senderAltId].some(identity =>
           typeof identity === 'string'
-          && /^\\+?[0-9]+(@(s\\.whatsapp\\.net|lid))?$/.test(identity)
-          && policyOwners.includes(identity.replace(/\\D/g, '')));
+          && /^\+?[0-9]+(@(s\.whatsapp\.net|lid))?$/.test(identity)
+          && policyOwners.includes(identity.replace(/\D/g, '')));
         const intakeAllowed = policyOwner || (isGroup''')
     text = one(text, '            || matchesAllowedSender(senderId, senderAltId, ALLOWED_USERS, SESSION_DIR);', '            || matchesAllowedSender(senderId, senderAltId, ALLOWED_USERS, SESSION_DIR));')
     return text

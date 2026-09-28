@@ -1,5 +1,5 @@
 # NAQUUUU Workspace Status
-<!-- verified-against: ADR-033 -->
+<!-- verified-against: ADR-034 -->
 
 - Updated: 2026-09-28
 - Purpose: one-page digest for the WhatsApp relay and any agent that needs current context. Details live in `DECISION_LOG.md`, `HOSTS.md`, and the specs.
@@ -12,7 +12,7 @@
 - Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the fallback. Image generation is paid and key-gated via `scripts/gen_image.py` (configurable model, 3-model fallback chain; `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`); there is no viable free image tier. Group intake is an owner-driven command (`scripts/wa_group_allow.py`, allowlist + mention gate; `open`/allow-all refused).
 - Auto-sync (ADR-025): gate-protected auto-commit + node auto-pull. **Laptop Scheduled Task is currently `Disabled`** (it last ran 2026-09-25), so laptop edits do not auto-publish; the VPS and home server run systemd user timers. GitHub stays canonical. Note that auto-sync stages first and gates the *staged snapshot*, so an untracked new file is audited before it can be published.
 - Home server (`mipad-linux`) onboarded as a synced replica and M2 worker candidate; owner follow-ups pending (`opencode auth login`, reboot).
-- M2 worker dispatch (ADR-029) is **APPROVED 2026-09-28, activating**: the relay host will dispatch heavy jobs to `mipad-linux` over Tailscale with the dedicated relay-to-worker key (`NAQUUUU_WORKER_KEY`) and queue them durably when the worker is offline; light work stays on the relay host. Queued output is archived under `done/` and summarized by `scripts/job_status.sh` (`--prune` bounds retention); the relay skill is not yet wired to poll it, so a queued job produces no automatic reply. Worker SSH trust (`scripts/authorize_worker.sh`) and the skill switch are now authorized and in progress. Heavy jobs currently run on the relay host.
+- M2 worker dispatch (ADR-029) is **APPROVED 2026-09-28, activating**: the relay host will dispatch heavy jobs to `mipad-linux` over Tailscale with the dedicated relay-to-worker key (`NAQUUUU_WORKER_KEY`) and queue them durably when the worker is offline; light work stays on the relay host. Queued output is archived under `done/` and summarized by `scripts/job_status.sh` (`--prune` bounds retention); the relay skill is not yet wired to poll it, so a queued job produces no automatic reply. The drain timer is active and enabled and an isolated offline-queue test passed. Worker SSH rejects both available keys; authorization, heavy execution, archive verification and the skill switch remain blocked. Heavy jobs currently run on the relay host.
 - Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`) to put personal devices behind `tag:personal` with default-deny; not applied. The tailnet currently mixes work machines with personal devices.
 - Autonomy: shell execution is auto-approved with destructive deny-lists. Commits and pushes are gate-protected, but auto-sync **publishes whatever an agent left behind** - it is not a review gate (`L-04`; a bad model pin once went live this way). Treat a commit needing approval as a real requirement, not a formality.
 - Remote access: Tailscale + RDP (the phone drives the desktop); SSH deferred (ADR-020).
@@ -35,7 +35,7 @@
 
 ## Pending workspace items
 
-- Spotify taste snapshot (ADR-021): implementation in progress; owner one-time Spotify app setup pending.
+- Spotify taste snapshot (ADR-021): live fetch succeeded 2026-09-28 with existing authorization; cache-only status tested with zero network. Setup remains documented in SPOTIFY_INTEGRATION.md.
 - Model-backend placeholder: route personal model backends to the GCP project `naquuuu` (deferred; ROADMAP line 11).
 - SSH path: deferred (ADR-020); fallbacks are the Win32-OpenSSH release or Tailscale built-in SSH.
 - M2 activation (ADR-029): approved by owner 2026-09-28; worker trust (`scripts/authorize_worker.sh`) plus relay-skill switch to dispatch now in progress. The relay skill is not switched until the worker key is authorized and verified.
@@ -50,3 +50,7 @@
 3. Home-server follow-ups: `opencode auth login` + reboot.
 4. Optional: raise the assistant model above the free tier (ADR-027 capability bar).
 5. Stage 0 owner actions remain for DO.
+
+## Astra execution receipt
+
+See `ASTRA_EXECUTION_REPORT.md` for workstream evidence and remaining live checks. Runtime guards and an authenticated warm wrapper were deployed; provider/model pins unchanged. ADR-034 accepts authenticated reply-context commands and the sixty-second generic status exception.
