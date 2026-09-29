@@ -5,8 +5,8 @@
   // Corporate isolation: zero MAPCLUB data crosses into this workspace (ADR-003).
   "default_agent": "naquuuubot",
   // Pinned paid flash tier: avoids free-tier queue latency (ADR-015).
-  "model": "bigpickle/opencode-zen",
-  "small_model": "bigpickle/opencode-zen",
+  "model": "opencode-go/muse-spark-1.3-contributor",
+  "small_model": "opencode-go/muse-spark-1.3-contributor",
   "subagent_depth": 1,
   "instructions": ["AGENTS.md"],
   // Global: external paths never prompt (Hermes state excepted); skills auto-load.
