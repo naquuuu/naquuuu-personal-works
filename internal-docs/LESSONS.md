@@ -13,6 +13,8 @@ L-20. Verify adapter dependencies before extending timeouts (Astra recovery, 202
 
 L-21. Relay verified end to end (2026-09-28, evening). Owner message round-trip confirmed: the bot replied and executed, closing L-20's open item. Full stack proven in one shot - session, bridge, gateway, owner gate, `opencode run`. The day's complete chain: (1) two hosts on one session plus `Restart=always` caused the outage (L-17); (2) an interrupted `hermes update` broke the environment (L-18); (3) a missing `aiohttp` masqueraded as timeouts (L-20, correcting L-19). Rule: when a health check reports a timeout, first prove the check itself can run - a swallowed import error and a slow host produce identical log lines. Do not run `hermes update` on the relay host.
 
+L-22. Blog diagrams must follow "Architectural Blueprint on Warm Paper" (2026-09-29). Avoid dark terminal/SaaS whiteboard boxes (`#111110`) on blog essays. Use warm paper grounds (`var(--bg-surface)` / `#ece8dd`), subtle hairline borders, muted analog washes (terracotta, slate, sage), and strictly lowercase SVG labels per `STYLE_BIBLE.md`. Involve `naquuuu-curator` for aesthetic vetting on blog visual artifacts.
+
 ## Open questions
 
 1. Compaction completed 2026-09-28 under ASTRA_ONESHOT authorization; L-01 through L-19 moved with stable IDs and L-13 remains resolvable in the archive.

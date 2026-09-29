@@ -171,6 +171,7 @@ Lead with action. Number steps. Cap lists at 5 items. No unnecessary conversatio
 2. **Subpage Anchor Integrity**: All in-page anchors must resolve to valid DOM IDs.
 3. **Audio / Media Resilience**: Any audio features must use valid user gestures (`click`, `pointerdown`) and deterministic loop handling.
 4. **Reading Column**: Constrained to `max-width: 72ch; margin: 0 auto; min-width: 0;`.
+5. **Architectural Blueprint Diagrams**: Inline SVG diagrams must match the blog's warm paper aesthetic (`var(--bg-surface)` / subtle hairlines) with muted analog washes. Zero generic dark-mode SaaS boxes; strictly lowercase SVG typography per `STYLE_BIBLE.md`.
 
 ### C. CLI & Tooling Scripts
 1. **Cross-Platform**: Compatible with Windows PowerShell and Unix bash environments.

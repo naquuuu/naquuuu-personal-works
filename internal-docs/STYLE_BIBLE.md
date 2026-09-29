@@ -446,6 +446,16 @@ If a future essay genuinely needs one, it must carry a descriptive
 lowercase alt attribute, and the alt must say what the thing is, not that
 it is a picture.
 
+### 2.8 inline svg diagrams: architectural blueprint on warm paper
+
+Inline SVG diagrams must match the blog's warm paper aesthetic rather than
+generic dark-mode SaaS or terminal screens.
+- Framing: `.flowchart-whiteboard-box` with `var(--bg-surface)` background and subtle hairline border `var(--border-subtle)` / `var(--border-active)`.
+- Cards: clean elevated paper (`#ffffff` / `#fffdf6`) with 1px hairline stroke and `rx="5"`.
+- Muted analog washes: terracotta wash for audits, slate wash for API contracts, crimson mist for verification gates, sage wash for approved deliverables.
+- Lowercase canon: all text nodes, badges, sublabels, and legend labels inside SVG must be strictly lowercase per Section 1.1.
+- Involve `naquuuu-curator` or consult `TASTE_PROFILE.md` for visual vetting.
+
 ---
 
 ## 3. tone spectrum
