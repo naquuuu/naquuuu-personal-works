@@ -457,7 +457,41 @@ generic dark-mode SaaS or terminal screens.
 - Color rule (ADR-036): cards and arrows stay neutral paper and grey. Color is a wash used only to highlight (a new flow, a risk, a dependency, a verified outcome), never as decoration.
 - Coverage: every non-creative page (systems essays, the relay recovery note, all three work-experience case studies) carries one blueprint flowchart. The two creative essays are exempt.
 - Principle strip: directly under each flowchart, a `.principle-strip` maps 2 to 3 steps to my four principles (murphy's law, reka peluang, buffers, recovery). Each line must point at a step that exists in the diagram or page text, and the strip carries a note that it is an editorial reading, not additional results. No invented metrics, steps or sequences.
+- Shape vocabulary (ADR-038): use standard flowchart shapes and match each shape to what the step is, never to add variety.
+
+  | Shape | Use it for |
+  | :--- | :--- |
+  | terminal pill | start and end of the flow |
+  | input parallelogram | a trigger or input entering the flow |
+  | process rect | a step someone performs |
+  | decision diamond | a branch with labelled exits |
+  | gate hexagon | a check or approval gate the flow must pass |
+  | data cylinder | a store, table or dataset |
+  | document wave | a spec, report or other written artifact |
+
+- Shapes stay neutral paper cards. Shape carries the meaning; color stays reserved for the highlight rule above.
+- Line types: at most 4 in one diagram. Failure and risk share one line type; the former audit-flag line was merged into it after the curator review (2026-09-30). Do not add a fifth line type to express a nuance; say it in the principle strip or the page text.
+- Legend: every flowchart carries a legend naming the shapes and line types it uses, and nothing it does not use. Legend text is at least 10px so it stays readable when the 640px canvas scrolls sideways on a phone.
 - Involve `naquuuu-curator` or consult `TASTE_PROFILE.md` for visual vetting.
+
+### 2.9 rejected interface patterns
+
+Owner verdicts from the 2026-09-30 homepage pass (ADR-037, ADR-038). They
+apply to the homepage and site chrome as well as essays. Do not reintroduce
+them in a new form.
+
+| Rejected | Why | Use instead |
+| :--- | :--- | :--- |
+| big-number proof strip under the hero | owner: "too gimmicky" | one CV-verified result inside each selected-work row |
+| glowing or popping toggle (red outline, glow, pop animation on the lens switcher) | owner: "too ai" | ink-filled segmented control, no extra hint text around it |
+| frosted floating pill (backdrop blur, drop shadow) | removed in the curator review | flat floating switcher, no blur, no shadow |
+| logo ticker or logo wall of employer names | ADR-037 allows marks only next to the owner's own roles or competition entries | one small mark next to the owner's own role row, taken from the company's own site with owner approval, boxless, grayscale at about 0.62 opacity, brand color on hover |
+| tall dossier cards | owner wants less scrolling | compact index rows (390px homepage went from 7,847px to 5,234px) |
+
+The common thread, as an editorial reading of these verdicts: if a
+component exists to impress rather than to inform, or animates to draw
+attention to itself, it is out. Run new interface ideas past
+`naquuuu-curator` before `naquuuu-builder` ships them.
 
 ---
 
