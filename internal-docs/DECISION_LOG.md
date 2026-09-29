@@ -607,3 +607,21 @@ This log records major technical and structural decisions made across personal p
 - **Anti-hallucination rule**: nodes and labels may only restate facts already on the page (or, for the relay note, the documented lessons L-17, L-18, L-20, L-21). Sequences on experience pages are labelled simplified. The strip states it is an editorial reading, not additional results.
 - **Enforcement**: `blog/scripts/verify_blog_qa.py` gate 5 fails if a required page lacks a flowchart or its principle strip. The creative essays (shibuya-kei, tailoring) are exempt.
 - **Consequences**: Flowchart canvas has a 640px minimum width and scrolls sideways on phones so text stays readable. Asset version `20260929c`.
+
+## ADR-037: Company Marks, CV Link and Contact Icons on the Blog
+- **Date**: 2026-09-29 (revised 2026-09-30)
+- **Status**: Accepted (owner request).
+- **Decision**: Employer and competition logos (MAPCLUB, Traveloka, BCG, 3M, Schneider Electric) are taken from each company's own website with owner approval and shown small, boxless and grayscale, turning to brand color on hover. 3M is cropped to the "3M" mark and Schneider uses its "SE" mark. The CV PDF is published at `/assets/Krishna_CV_2026.pdf` (owner accepted that it exposes their email and WhatsApp number). Contact icons use Bootstrap Icons 1.11.3 (MIT) as an inline sprite.
+- **Consequences**: Logos are trademarks of their owners and appear only next to the owner's own roles or competition entries.
+
+## ADR-038: Compact Homepage in the naquuuu Persona
+- **Date**: 2026-09-30
+- **Status**: Accepted (owner request, inspired by the structure of a friend's portfolio, not its look).
+- **Decision**: The five tall dossier cards become a compact "selected work" index (logo, role and dates, title, one-line description, CV-verified result). Sections are numbered per lens with a CSS counter. The toolkit is four CV-aligned chip groups; each chip links to and names its source (hover or focus tooltip) only where the CV or a case page states it. A proof strip of headline numbers was tried and rejected by the owner as gimmicky. A ctrl+k / cmd+k command palette (`blog/assets/js/palette.js`) searches sections, case studies, notes and contact. The lens switcher drops the glow and pop for an ink-filled segmented control. Flowcharts use standard shapes (terminal, input, process, decision, gate, data, document) with a legend. The hero song is off by default and plays only after the visitor clicks the sound pill.
+- **Measured**: homepage height on a 390px phone 7,847px before, 5,234px after; desktop about 3,500px.
+- **Open**: toolkit chips without a confirmed source (crm & marketing analytics, sql, agile / scrum, supply chain, education) carry no tooltip or link until the owner names the source.
+
+## ADR-039: GoatCounter Visit Counting
+- **Date**: 2026-09-30
+- **Status**: Accepted (owner request).
+- **Decision**: Count visits with GoatCounter (`naquuuu.goatcounter.com`), no cookies and no personal data stored, instead of logging IP addresses (IPs are personal data under UU PDP 27/2022). Every published page carries the tag; each footer states "visits are counted with goatcounter: no cookies, no personal info tracked" with a link to goatcounter.com. The homepage footer shows the public total from `/counter/TOTAL.json` (enabled by the owner) and hides itself when the count is zero or the endpoint fails.
