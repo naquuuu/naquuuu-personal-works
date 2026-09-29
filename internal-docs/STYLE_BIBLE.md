@@ -454,6 +454,9 @@ generic dark-mode SaaS or terminal screens.
 - Cards: clean elevated paper (`#ffffff` / `#fffdf6`) with 1px hairline stroke and `rx="5"`.
 - Muted analog washes: terracotta wash for audits, slate wash for API contracts, crimson mist for verification gates, sage wash for approved deliverables.
 - Lowercase canon: all text nodes, badges, sublabels, and legend labels inside SVG must be strictly lowercase per Section 1.1.
+- Color rule (ADR-036): cards and arrows stay neutral paper and grey. Color is a wash used only to highlight (a new flow, a risk, a dependency, a verified outcome), never as decoration.
+- Coverage: every non-creative page (systems essays, the relay recovery note, all three work-experience case studies) carries one blueprint flowchart. The two creative essays are exempt.
+- Principle strip: directly under each flowchart, a `.principle-strip` maps 2 to 3 steps to my four principles (murphy's law, reka peluang, buffers, recovery). Each line must point at a step that exists in the diagram or page text, and the strip carries a note that it is an editorial reading, not additional results. No invented metrics, steps or sequences.
 - Involve `naquuuu-curator` or consult `TASTE_PROFILE.md` for visual vetting.
 
 ---

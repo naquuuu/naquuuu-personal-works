@@ -592,3 +592,18 @@ This log records major technical and structural decisions made across personal p
 - **Reliability**: A generic status is permitted after sixty seconds despite ADR-027's normal quiet display. Cap transient primary retries at two with exponential backoff and bound the complete vision stage to forty-five seconds; retain the existing provider fallback ladder and model pins. The authenticated local opencode wrapper may reuse only trusted host context, never a global last session.
 - **Evidence boundary**: Synthetic command tests, retry tests and live service settings do not prove phone delivery, accurate photo interpretation, proactive mentions, or worker activation. These remain separate checks in `ASTRA_EXECUTION_REPORT.md`.
 - **Knowledge maintenance**: The owner authorized the first compaction: L-01 through L-19 moved to `lessons/2026-09.md`, preserving IDs and the historical L-13 reference. Add `/agent-viz` to session-end checks, using `--serve` without `--out` for private viewing and publishing only sanitized explicit exports.
+
+## ADR-035: Blog Type System (Plus Jakarta Sans UI + Headings, Open Sans Reading Text)
+- **Date**: 2026-09-29
+- **Status**: Accepted (owner request). Supersedes the typography line of the earlier design-token decision (Space Grotesk display + Open Sans body).
+- **Decision**: `--font-sans` and `--font-display` resolve to Plus Jakarta Sans; a new `--font-read` (Open Sans) applies to paragraphs, lists, tables, blockquotes and captions inside `.essay-content` and `.inquiry-prose`. JetBrains Mono is unchanged for labels and code. Space Grotesk and Syne are removed from all published pages.
+- **Why**: Plus Jakarta Sans gives the UI and headings one family; long-form reading keeps a body face built for 72ch columns. Montserrat was rejected for reading text because it is a wide geometric display face.
+- **Consequences**: Asset version bumped to `20260929b`. `blog/scripts/new_essay.py` emits the new font links. SVG diagram text uses Plus Jakarta Sans.
+
+## ADR-036: Blueprint Flowcharts on All Non-Creative Pages, Mapped to the Four Principles
+- **Date**: 2026-09-29
+- **Status**: Accepted (owner request).
+- **Decision**: Every non-creative blog page (product operating system essay, reverse-engineering essay, relay recovery note) and every work-experience case study (MAPCLUB, Traveloka, BCG) carries an inline blueprint flowchart in the warm-paper style of STYLE_BIBLE 2.8. Neutral cards and grey arrows by default; color washes only highlight a flow, risk, dependency or verified outcome. Each flowchart is followed by a `.principle-strip` that maps 2 to 3 of its steps to the four principles (murphy's law, reka peluang, buffers, recovery).
+- **Anti-hallucination rule**: nodes and labels may only restate facts already on the page (or, for the relay note, the documented lessons L-17, L-18, L-20, L-21). Sequences on experience pages are labelled simplified. The strip states it is an editorial reading, not additional results.
+- **Enforcement**: `blog/scripts/verify_blog_qa.py` gate 5 fails if a required page lacks a flowchart or its principle strip. The creative essays (shibuya-kei, tailoring) are exempt.
+- **Consequences**: Flowchart canvas has a 640px minimum width and scrolls sideways on phones so text stays readable. Asset version `20260929c`.
