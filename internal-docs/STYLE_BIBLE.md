@@ -493,6 +493,14 @@ component exists to impress rather than to inform, or animates to draw
 attention to itself, it is out. Run new interface ideas past
 `naquuuu-curator` before `naquuuu-builder` ships them.
 
+One sanctioned exception: the red `.ai-note` aside in the header of every
+dedicated detail page (L-28). It is the only red alert-style component on the
+site, and the owner mandated it on 2026-09-30 so visitors notice at once that
+the page was written by ai. It overrides the earlier curator spec of a muted
+grey note. Reviewers must not quiet it down, restyle it as grey, shrink it or
+move it out of the header. The rejection of the red outline on the lens
+switcher above is unchanged; this exception covers the disclaimer only.
+
 ---
 
 ## 3. tone spectrum
@@ -720,6 +728,21 @@ Zero occurrences, regardless of phrasing:
 
 The drafting agents must also refuse to invent them. Fabricating a company
 name to make an example land is the same violation as leaking a real one.
+
+### 4.7 ai note copy
+
+Owner rule, 2026-09-30 (L-28). Every dedicated detail page carries one
+disclaimer, verbatim, lowercase:
+
+- essays and the relay recovery note: `ai note: this post was written by ai and might be wrong. check anything important before you rely on it.`
+- work experience hub, the three case studies, and the two competition pages: `ai note: this page was written by ai and might be wrong. check anything important before you rely on it.`
+
+Markup and placement: an `.ai-note` aside (crimson tokens in
+`blog/assets/css/style.css`, mono crimson label) as the last child of
+`.essay-header`, under the byline or meta row and above the first content
+box. New pages must include it; `blog/scripts/new_essay.py` already does for
+essays. Not on the homepage, the essay list page, the session-map page or the
+pdf. Only the words "post" and "page" vary; do not paraphrase the rest.
 
 ---
 

@@ -5,13 +5,9 @@ Short, append-only. Agents read this first together with `STATUS.md` — it exis
 
 **IDs.** `L-nn`, permanent, assigned in order, never renumbered or reused. Cite a lesson as `L-nn`, never by ordinal. ADR-030 §Consequences cites "lesson 13" by ordinal; that entry is `L-13`, order unchanged.
 
-**Compaction.** When this file exceeds ~5,000 chars, roll the oldest entries into `internal-docs/lessons/YYYY-MM.md` and keep the recent hot set here. The first compaction moved L-01 through L-19 to the September archive on 2026-09-28.
+**Compaction.** When this file exceeds ~5,000 chars, roll the oldest entries into `internal-docs/lessons/YYYY-MM.md` and keep the recent hot set here. The first compaction moved L-01 through L-19 to the September archive on 2026-09-28; L-20 and L-21 followed on 2026-09-30 to keep room for L-28.
 
-Archived L-01 through L-19: [September archive](lessons/2026-09.md). IDs remain permanent.
-
-L-20. Verify adapter dependencies before extending timeouts (Astra recovery, 2026-09-28). The live gateway already had `HERMES_GATEWAY_PLATFORM_CONNECT_TIMEOUT=180` in both its process environment and persistent drop-in. Its venv lacked `aiohttp`; `_poll_bridge_health` swallowed the import error and reported an HTTP startup timeout while the Node bridge connected successfully. Installed the checkout-pinned `aiohttp==3.14.3` into the existing venv and restarted the service. At 19:32:48 WIB the gateway logged `whatsapp connected`, followed by `Gateway running with 1 platform(s)` at 19:32:49. This corrects L-19's unproven hardware-only diagnosis and completes L-18's dependency recovery for bridge health polling. No code update or re-pair was needed. Phone message round-trip remains pending owner verification.
-
-L-21. Relay verified end to end (2026-09-28, evening). Owner message round-trip confirmed: the bot replied and executed, closing L-20's open item. Full stack proven in one shot - session, bridge, gateway, owner gate, `opencode run`. The day's complete chain: (1) two hosts on one session plus `Restart=always` caused the outage (L-17); (2) an interrupted `hermes update` broke the environment (L-18); (3) a missing `aiohttp` masqueraded as timeouts (L-20, correcting L-19). Rule: when a health check reports a timeout, first prove the check itself can run - a swallowed import error and a slow host produce identical log lines. Do not run `hermes update` on the relay host.
+Archived L-01 through L-21: [September archive](lessons/2026-09.md). IDs remain permanent.
 
 L-22. Blog diagrams must follow "Architectural Blueprint on Warm Paper" (2026-09-29). Avoid dark terminal/SaaS whiteboard boxes (`#111110`) on blog essays. Use warm paper grounds (`var(--bg-surface)` / `#ece8dd`), subtle hairline borders, muted analog washes (terracotta, slate, sage), and strictly lowercase SVG labels per `STYLE_BIBLE.md`. Involve `naquuuu-curator` for aesthetic vetting on blog visual artifacts.
 
@@ -24,6 +20,8 @@ L-25. The ctrl+k palette must switch lens before scrolling (2026-09-30). In-page
 L-26. Blank screenshots of scrolled regions in the browser pane are a tooling artifact, not a page bug (2026-09-30). Measure layout with javascript, or set a tall viewport (for example 390x2600) and screenshot at scroll 0.
 
 L-27. Blog visual work runs curator-in-the-loop with strict roles (2026-09-30). Owner rule: every part involves `naquuuu-curator`, and each subagent stays in its role: curator reviews taste, builder edits, skeptic challenges, verifier gates, scribe documents. Owner taste rejections from this pass ("too gimmicky" proof strip, "too ai" glowing toggle, frosted pills) are canon in `STYLE_BIBLE.md` 2.9; flowchart shape and legend rules are in 2.8.
+
+L-28. Every dedicated blog detail page carries a red ai note (2026-09-30). Owner rule: pages written by ai must say so where visitors notice it at once, so the `.ai-note` aside is crimson on purpose, overriding the earlier muted grey spec. Any new dedicated page (essay, note, experience or competition page) adds the aside as the last child of its header, keeps it red, and uses the wording "post" on essays and notes, "page" on experience and competition pages; copy in `STYLE_BIBLE.md` 4.7.
 
 ## Open questions
 

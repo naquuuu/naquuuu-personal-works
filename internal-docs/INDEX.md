@@ -25,7 +25,7 @@ Read the hot slice only; never past it.
 | Worker dispatch and durable queue | `internal-docs/relay/M2_DISPATCH_RUNBOOK.md` |
 | Tailscale / network / remote access | `internal-docs/TAILSCALE_ACL.md` |
 | Group policy — who may speak, who may act | `internal-docs/relay/README.md` |
-| Aesthetic, persona, taste | `internal-docs/TASTE_PROFILE.md` (blog diagrams and rejected ui patterns: `STYLE_BIBLE.md` 2.8 to 2.9) |
+| Aesthetic, persona, taste | `internal-docs/TASTE_PROFILE.md` (blog diagrams and rejected ui patterns: `STYLE_BIBLE.md` 2.8 to 2.9; ai note copy: 4.7) |
 | Agent roster, prompt formula, handoff contract | `internal-docs/AGENT_PLAYBOOK.md` |
 | Research notes (DO Managed Agents, Phase 4) | `internal-docs/research/` |
 | A decision not yet made | `internal-docs/ROADMAP.md` |
