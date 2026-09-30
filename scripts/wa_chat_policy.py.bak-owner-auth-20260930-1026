@@ -144,11 +144,11 @@ class ChatPolicy:
 
     def intercept(self, event: dict) -> str | None:
         # Authentication runs BEFORE examining/parsing the command body.
-        owner, _ = evaluate(str(event.get('senderId') or ''), self.env_path.parent)
+        owner, _ = evaluate(str(event.get('senderId') or ''))
         # Baileys may expose an opaque LID as senderId and the same sender's
         # phone JID as senderAltId. Both fields must come from the bridge event.
         if not owner:
-            owner, _ = evaluate(str(event.get('senderAltId') or ''), self.env_path.parent)
+            owner, _ = evaluate(str(event.get('senderAltId') or ''))
         body = str(event.get('body') or '').strip()
         command = body.split(maxsplit=1)[0] if body else ''
         if command not in COMMANDS:
@@ -170,7 +170,7 @@ class ChatPolicy:
                     return 'Reply to the person, or use the group command inside that group.'
                 if key == PEOPLE:
                     target = digits_only(target)
-                    if command == '/remove' and evaluate(target, self.env_path.parent)[0]:
+                    if command == '/remove' and evaluate(target)[0]:
                         return 'Owner access cannot be removed from chat.'
                 entries = _entries(text, key)
                 if command == '/remove':
