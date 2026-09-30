@@ -734,8 +734,8 @@ name to make an example land is the same violation as leaking a real one.
 Owner rule, 2026-09-30 (L-28). Every dedicated detail page carries one
 disclaimer, verbatim, lowercase:
 
-- essays and the relay recovery note: `ai note: this post was written by ai and might be wrong. check anything important before you rely on it.`
-- work experience hub, the three case studies, and the two competition pages: `ai note: this page was written by ai and might be wrong. check anything important before you rely on it.`
+- essays and the relay recovery note: `ai note: this post was written by ai and might be wrong. check anything important and double check it with the blog owner before you rely on it.`
+- work experience hub, the three case studies, and the two competition pages: `ai note: this page was written by ai and might be wrong. check anything important and double check it with the blog owner before you rely on it.`
 
 Markup and placement: an `.ai-note` aside (crimson tokens in
 `blog/assets/css/style.css`, mono crimson label) as the last child of
