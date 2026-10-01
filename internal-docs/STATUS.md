@@ -1,14 +1,14 @@
 # NAQUUUU Workspace Status
-<!-- verified-against: ADR-034 -->
+<!-- verified-against: ADR-035 -->
 
-- Updated: 2026-09-28
+- Updated: 2026-10-01
 - Purpose: one-page digest for the WhatsApp relay and any agent that needs current context. Details live in `DECISION_LOG.md`, `HOSTS.md`, and the specs.
 
 ## Live today
 
 - **RELAY LIVE (2026-09-28, evening) - verified end to end.** Owner message round-trip confirmed: the bot replied and executed, closing `L-20`'s open item. Full stack proven - session, bridge, gateway, owner gate, `opencode run`. Chain: outage from two hosts plus `Restart=always` (`L-17`), broken env from an interrupted update (`L-18`), missing `aiohttp` masquerading as timeouts (`L-20`, correcting `L-19`) - closed by `L-21`. Complete recovery in `internal-docs/relay/ASTRA_HANDOFF.md` and the runbook. Do not run `hermes update` on the relay host.
 - 7-agent opencode roster (naquuuubot + naquuuu-curator + 5 hidden subagents); personas in `.opencode/agent/`, AGY mirrors in `.agents/agents/`.
-- WhatsApp relay hosted on the VPS (M1 complete, ADR-026): the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`). Group intake is a per-group allowlist (ADR-024) and **speaking is per-group free-response** via `WHATSAPP_FREE_RESPONSE_CHATS`, while **tool execution is owner-only** through the fail-closed `scripts/wa_owner_gate.py` (`NAQUUUU_WA_OWNER_IDS`, host env only) - a speaker is not an operator (ADR-031, which supersedes the older ADR-024/ADR-030 autonomy consequences). A newly admitted group is mention-only until the owner promotes it. The relay survives the laptop being off.
+- WhatsApp relay hosted on the VPS (M1 complete, ADR-026): the owner messages Hermes; engineering tasks route to opencode via `opencode run` (Hermes skill: `opencode-relay`). Group intake is a per-group allowlist (ADR-024) and **speaking is per-group free-response** via `WHATSAPP_FREE_RESPONSE_CHATS`, while **tool execution is owner-only**, enforced by the host: the bridge computes a strict owner flag from `NAQUUUU_WA_OWNER_IDS` (host env only), the gateway adds an ephemeral per-turn verdict, and the executor gate blocks guests and, for everyone including the owner, host-only admin actions (ADR-035) - a speaker is not an operator (ADR-031, which supersedes the older ADR-024/ADR-030 autonomy consequences). A newly admitted group is mention-only until the owner promotes it. The relay survives the laptop being off.
 - Assistant provider policy (ADR-028, owner-set 2026-09-25): Nous Portal is primary for the Hermes relay assistant, Gemini is the fallback. Image generation is paid and key-gated via `scripts/gen_image.py` (configurable model, 3-model fallback chain; `GEMINI_IMAGE_KEY`, fallback `GOOGLE_API_KEY`); there is no viable free image tier. Group intake is an owner-driven command (`scripts/wa_group_allow.py`, allowlist + mention gate; `open`/allow-all refused).
 - Auto-sync (ADR-025): gate-protected auto-commit + node auto-pull. **Laptop Scheduled Task is currently `Disabled`** (it last ran 2026-09-25), so laptop edits do not auto-publish; the VPS and home server run systemd user timers. GitHub stays canonical. Note that auto-sync stages first and gates the *staged snapshot*, so an untracked new file is audited before it can be published.
 - Home server (`mipad-linux`) onboarded as a synced replica and M2 worker candidate; owner follow-ups pending (`opencode auth login`, reboot).

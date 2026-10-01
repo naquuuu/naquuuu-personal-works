@@ -13,6 +13,7 @@ import subprocess
 
 MARK = "NAQUUUU_WA_OWNER_AUTH_V2"
 BRIDGE_OWNER_MARK = "NAQUUUU_WA_OWNER_AUTH_FROMME_V1"
+HOST_ONLY_MARK = "NAQUUUU_WA_HOST_ONLY_GUARD_V1"
 PROMPT_OWNER_MARK_V1 = "NAQUUUU_WA_OWNER_VERDICT_EPHEMERAL_V1"
 PROMPT_OWNER_MARK = "NAQUUUU_WA_OWNER_VERDICT_EPHEMERAL_V2"
 PINNED_COMMIT = "ecacf3d0c967222f34d15bc58852a85f2c33880c"
@@ -277,9 +278,8 @@ def patch_runner(text: str) -> str:
     return replace_once(text, _RUNNER_ANCHOR, v2 + _RUNNER_ANCHOR)
 
 
-def patch_executor(text: str) -> str:
-    anchor = "    \"\"\"Run Relay rewrites before Hermes policy and dispatch exactly once.\"\"\"\n    from agent import relay_tools"
-    replacement = f'''    \"\"\"Run Relay rewrites before Hermes policy and dispatch exactly once.\"\"\"
+_EXECUTOR_ANCHOR = "    \"\"\"Run Relay rewrites before Hermes policy and dispatch exactly once.\"\"\"\n    from agent import relay_tools"
+_EXECUTOR_V2 = f'''    \"\"\"Run Relay rewrites before Hermes policy and dispatch exactly once.\"\"\"
     # {MARK}: this is before relay hooks, middleware, plugin pre-hooks and dispatch.
     try:
         import os as _wa_os, sys as _wa_sys
@@ -304,11 +304,39 @@ def patch_executor(text: str) -> str:
             args=function_args, middleware_trace=middleware_trace or [], blocked=True, dispatched=False,
         )
     from agent import relay_tools'''
-    if MARK in text:
-        if text.count(MARK) == 1 and replacement in text and anchor not in text:
+# Attribute access (not `from ... import`) so a stale wa_turn_auth without the
+# host-only check raises AttributeError and hits the fail-closed Exception branch.
+_EXECUTOR_V3 = _EXECUTOR_V2.replace(
+    "        from wa_turn_auth import must_deny_tool\n        if must_deny_tool():",
+    "        import wa_turn_auth as _wa_turn_auth\n        if _wa_turn_auth.must_deny_tool():",
+).replace(
+    "            )\n    except ImportError:",
+    f'''            )
+        # {HOST_ONLY_MARK}: host-admin actions stay in the owner's host shell, never WhatsApp.
+        if _wa_turn_auth.must_deny_host_only(function_args):
+            return _ManagedToolResult(
+                result='{{"error":"That is a host-only action; run it from the host shell."}}',
+                args=function_args, middleware_trace=middleware_trace or [], blocked=True, dispatched=False,
+            )
+    except ImportError:''', 1)
+if HOST_ONLY_MARK not in _EXECUTOR_V3 or _EXECUTOR_V3 == _EXECUTOR_V2:
+    raise RuntimeError("Executor V3 template failed to build")
+
+
+def patch_executor(text: str) -> str:
+    """Install the executor gate (V3: owner gate plus host-only tripwire; upgrades V2)."""
+    has_mark = MARK in text
+    has_host_only = HOST_ONLY_MARK in text
+    if has_host_only:
+        if (text.count(_EXECUTOR_V3) == 1 and text.count(MARK) == 1
+                and text.count(HOST_ONLY_MARK) == 1 and _EXECUTOR_ANCHOR not in text):
             return text
         raise ValueError("Partial owner-auth executor patch detected")
-    return replace_once(text, anchor, replacement)
+    if has_mark:
+        if text.count(_EXECUTOR_V2) == 1 and text.count(MARK) == 1:
+            return text.replace(_EXECUTOR_V2, _EXECUTOR_V3, 1)
+        raise ValueError("Partial owner-auth executor patch detected")
+    return replace_once(text, _EXECUTOR_ANCHOR, _EXECUTOR_V3)
 
 
 def main() -> None:
@@ -334,7 +362,8 @@ def main() -> None:
     proposals = [(path, patch(original)) for (path, patch), (_same_path, original) in zip(files, originals)]
     compile(proposals[0][1], '<adapter>', 'exec')
     compile(proposals[2][1], '<run_turn>', 'exec')
-    compile(proposals[3][1], '<tool_executor>', 'exec')
+    compile(proposals[3][1], '<run_turn_runner>', 'exec')
+    compile(proposals[4][1], '<tool_executor>', 'exec')
     if args.check:
         if any(proposed != original for (_path, proposed), (_same_path, original) in zip(proposals, originals)):
             raise ValueError('Owner-auth patches are not fully installed')

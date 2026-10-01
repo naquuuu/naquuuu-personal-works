@@ -68,6 +68,7 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 ## Rules
 
 - OWNER GATE: host code enforces owner authorization before tools, including tool hooks and background execution. Do not provide sender IDs or invoke a model-supplied identity check. Any unknown identity or configuration error is denied.
+- HOST-ONLY ACTIONS: person/group admission/promotion scripts (`wa_owner_gate.py`, `wa_group_allow.py`, `whatsapp_group_fix.py`, `wa_free_response.py`, `install_wa_owner_auth.py`, `install_wa_chat_policy.py`), `.env` edits, `.hermes/` state changes, and Hermes service control are host-shell-only (even when owner-AUTHORIZED); never run them from a WhatsApp turn and never pass them to opencode run either. The host tool gate blocks obvious forms in Hermes tool arguments (best-effort tripwire, ADR-035); it cannot see what a child `opencode run` does, so this rule still binds the agent.
 - Never include secrets, phone numbers, keys, or tokens in the prompt.
 - The relay runs opencode with the config default model `opencode-go/deepseek-v4.1-flash` (from `opencode.jsonc`); or pass `--model opencode-go/deepseek-v4.1-flash` explicitly.
 - If asked in chat to allowlist a person or number, reply in one or two sentences that person admission is owner-side only and point the owner to `scripts/whatsapp_group_fix.py --allow-user` on the relay host.

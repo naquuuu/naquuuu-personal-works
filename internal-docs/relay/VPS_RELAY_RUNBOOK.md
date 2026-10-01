@@ -107,6 +107,17 @@ Only ONE bridge may run at a time — never laptop and VPS together.
 6. Verify with `hermes gateway status` plus a phone "hello".
 7. Fallback if the copied session is rejected: `hermes whatsapp` QR re-pair (owner-private scan).
 
+## Step 6.5 — Deploy sync (after `git pull` / host-tool-gate migration)
+
+When pulled code changes the owner-auth patches (e.g. the ADR-035 host-only guard), re-run the installer and reload the gateway. Always use the Hermes venv interpreter, never system `python3`.
+
+1. `cd ~/naquuuu && git pull`.
+2. `~/.hermes/hermes-agent/venv/bin/python scripts/install_wa_owner_auth.py --hermes-repo ~/.hermes/hermes-agent` (migrates the V2 executor block in place, writes timestamped backups, never restarts).
+3. `~/.hermes/hermes-agent/venv/bin/python scripts/install_wa_owner_auth.py --hermes-repo ~/.hermes/hermes-agent --check` must print `owner-auth patches are fully installed on the pinned source`.
+4. Mirror the persona before the restart so it loads with the new gate: `cp ~/naquuuu/internal-docs/relay/WHATSAPP_SOUL.md ~/.hermes/SOUL.md` (ADR-027 mirror rule).
+5. Never restart blindly: confirm the gateway's `session_turn_leases` count is 0 (no in-flight turns); if not, wait and re-check. The exact read command is not yet recorded in this runbook; add it here after the next deploy.
+6. `systemctl --user restart hermes-gateway.service`, then `systemctl --user status hermes-gateway.service`.
+
 ## Step 7 — Readiness + switch drill
 
 1. `cd ~/naquuuu && python scripts/host_check.py` → expect READY.
@@ -217,7 +228,7 @@ A new group is mention-only from the moment it is admitted; free-response is a s
 
 ### 3. "Add this group" from WhatsApp
 
-The WA group-add chat command is **OWNER-ONLY** and is the sole chat command of the relay; the gateway host gate enforces this before tool execution. The model never runs `wa_owner_gate.py` or handles sender IDs. Owner-side it runs `python3 scripts/wa_group_allow.py --add-latest`, which takes the JID from the gateway log — the id is never typed, printed, or passed through chat. Free-response promotion is owner-only as well, through `scripts/wa_free_response.py`; the bot never promotes a group on a guest request.
+Group admission from chat is handled by the host chat policy (host-side command-gate, ADR-034), not by the bot running a script. The model never runs `wa_owner_gate.py`, `wa_group_allow.py`, or `wa_free_response.py` from chat. Owner-side on the relay host, group admission and promotion scripts are host-shell-only: `python3 scripts/wa_group_allow.py --add-latest` (for admission) and `python3 scripts/wa_free_response.py --add <CHATID>` (for promotion); these scripts never run from a WhatsApp turn even when owner-AUTHORIZED, and the host tool gate blocks them. Free-response promotion is a separate deliberate step, host-run; the bot never promotes a group on a guest request.
 
 ### 4. Verify (four checks)
 

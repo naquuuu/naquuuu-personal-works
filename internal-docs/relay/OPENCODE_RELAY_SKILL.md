@@ -19,3 +19,7 @@ Session reuse is available only with a host-injected `NAQUUUU_RELAY_CONTEXT`; th
 Heavy work stays local until worker SSH, heavy execution, and queue archive verification pass. The drain timer alone does not prove M2 ready.
 
 Return a human reply in the owner's language, normally one to three sentences. No raw tool output, identifiers, or process narration. The gateway sends a generic one-line status at sixty seconds when needed.
+
+## Rules
+
+- HOST-ONLY ACTIONS: the following are blocked on every WhatsApp turn (even owner-AUTHORIZED) and never pass to opencode run: person/group admission/promotion scripts (`wa_owner_gate.py`, `wa_group_allow.py`, `whatsapp_group_fix.py`, `wa_free_response.py`, `install_wa_owner_auth.py`, `install_wa_chat_policy.py`), `.env` edits, `.hermes/` state changes, and Hermes service control (`hermes config set`, `hermes gateway start|stop|restart`, `systemctl ... hermes`, `pkill/killall ... hermes`). The host tool gate blocks obvious forms of these in Hermes tool arguments (best-effort, ADR-035); it cannot see inside a child `opencode run`, so never request them there.

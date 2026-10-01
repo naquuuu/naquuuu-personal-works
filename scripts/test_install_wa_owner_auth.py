@@ -1,19 +1,25 @@
 """Synthetic fixtures for the WhatsApp host authorization installer."""
+import contextlib
 import json
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
+import types
 import unittest
 import contextvars
+from unittest import mock
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 
-from install_wa_owner_auth import (MARK, PROMPT_OWNER_MARK, PROMPT_OWNER_MARK_V1,
-                                   _render_runner_block_v1, patch_adapter, patch_bridge,
+from install_wa_owner_auth import (HOST_ONLY_MARK, MARK, PROMPT_OWNER_MARK, PROMPT_OWNER_MARK_V1,
+                                   _EXECUTOR_ANCHOR, _EXECUTOR_V2, _render_runner_block_v1, patch_adapter, patch_bridge,
                                    patch_executor, patch_gateway, patch_runner,
                                    require_pinned_checkout, require_tool_context_propagation)
-from wa_turn_auth import bind_source, must_deny_tool
+import wa_turn_auth
+from wa_turn_auth import bind_source, must_deny_host_only, must_deny_tool
 from wa_owner_gate import evaluate
 
 
@@ -391,6 +397,233 @@ class InstallerAnchorTests(unittest.TestCase):
         self.assertIn('WhatsApp tool authorization unavailable.', patched)
         self.assertIn('blocked=True, dispatched=False', patched)
         self.assertEqual(patch_executor(patched), patched)
+        self.assertLess(patched.index('must_deny_tool()'), patched.index('must_deny_host_only('))
+        self.assertLess(patched.index('must_deny_host_only('), patched.index('from agent import relay_tools'))
+        self.assertLess(patched.index('must_deny_host_only('), patched.index('apply_tool_request_middleware'))
+        self.assertIn('host-only action', patched)
+        self.assertNotIn('from wa_turn_auth import', patched)  # attribute access keeps stale modules fail-closed
+
+
+EXECUTOR_SOURCE = (
+    "def run_tool(function_args, middleware_trace=None):\n"
+    + _EXECUTOR_ANCHOR + "\n    return 'dispatched'\n"
+)
+
+
+class _Source:
+    def __init__(self, platform, authorized=None):
+        self.platform = platform
+        if authorized is not None:
+            self._naquuuu_owner_authorized = authorized
+
+
+def _nested(depth, leaf):
+    value = leaf
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+class HostOnlyTripwirePerformanceTests(unittest.TestCase):
+    def test_large_arguments_scan_in_linear_time(self):
+        import time
+        owner = SimpleNamespace(platform="whatsapp", _naquuuu_owner_authorized=True)
+        payloads = ["hermes " * 28000, "/proc/" * 30000, "hermes foo\n" * 18000,
+                    "systemctl " * 20000, "pkill " * 30000, "x" * 200000]
+        with bind_source(owner):
+            for payload in payloads:
+                started = time.perf_counter()
+                must_deny_host_only({"content": payload})
+                self.assertLess(time.perf_counter() - started, 1.0, payload[:12])
+
+
+class HostOnlyTripwireTests(unittest.TestCase):
+    OWNER = _Source("whatsapp", True)
+    GUEST = _Source("whatsapp", False)
+    DENIED = [
+        {"command": "python3 scripts/whatsapp_group_fix.py --allow-user 15550001111"},
+        "python3 scripts/wa_free_response.py --add-latest",
+        "python3 scripts/wa_group_allow.py --add",
+        "python3 scripts/wa_owner_gate.py",
+        "python3 scripts/install_wa_owner_auth.py --hermes-repo x",
+        "python3 scripts/install_wa_chat_policy.py",
+        {"path": "/home/u/.hermes/.env", "content": "X=1"},
+        "cat ~/naquuuu/.env",
+        "cat .env.local",
+        "ls ~/.hermes",
+        "ls '~/.hermes'",
+        "type %USERPROFILE%\\.hermes\\config.yaml",
+        "systemctl --user restart hermes-gateway.service",
+        "hermes gateway restart",
+        "HERMES  GATEWAY   stop",
+        "hermes config set approvals.destructive_slash_confirm false",
+        "pkill -f hermes",
+        "killall hermes",
+        json.dumps({"command": "hermes gateway install"}),
+        json.dumps({"command": "cat \u002eenv"}),
+        {"outer": [{"inner": ("ok", "cat ~/.env")}]},
+        [["nested", ["deeper", {"k": "pkill hermes"}]]],
+        {"cat ~/.env": "value"},
+        _nested(12, "pwd"),
+        # Round 2: terminators, home spellings, cache-exemption boundaries.
+        "ls ~/.hermes,", "ls ~/.hermes;", "echo (~/.hermes)", "ls ~/.hermes",
+        "cat /home/u/.hermes/config.yaml", "cat /home/u/.hermes/logs/agent.log",
+        "cat /home/u/.hermes/SOUL.md", "ls /home/u/.hermes/hermes-agent/",
+        "cat /home/u/.hermes/.env",
+        "cat /home/u/.hermes/cache_evil/x", "cat /home/u/.hermes/image_cache/../config.yaml",
+        "cat /home/u/.hermes/image_cache/..\\.env",
+        "cat $HERMES_HOME/config.yaml", "cat ${HERMES_HOME}/logs/x", "ls $HERMES_HOME",
+        "cat $hermes_home/SOUL.md",
+        "type %LOCALAPPDATA%\\hermes\\config.yaml", "dir %localappdata%/hermes/logs",
+        "cat /home/u/.hermes/image_cache/a.jpg /home/u/.hermes/.env",
+        "cat .env", "cat .env.local", "cat config/.env.production",
+        "hermes -p synthetic gateway restart", "hermes gateway --replace",
+        "hermes gateway run --replace", "python3 -m hermes_cli.main gateway restart",
+        "python3 -m hermes_cli.main -p x gateway stop",
+        "hermes\ngateway restart", "echo ok; hermes config edit", "hermes config set a b",
+        "hermes -p x config edit",
+        "systemctl --user stop hermes-gateway", "systemctl\n  restart hermes-gateway",
+        "service hermes-gateway restart", "pgrep -fa hermes", "killall -9 hermes",
+        "python3 scripts/wa_chat_policy.py", "python3 scripts/install_relay_guards.py",
+        "python3 scripts/sync_wa_owner_auth_prompt.py --apply",
+        "python3 scripts/refresh_wa_prompt_snapshot.py", "bash scripts/enable_gates.sh",
+        "python3 scripts/swap_action_gateway_session.py",
+        "printenv", "printenv HOME", "cat /proc/self/environ", "tr '\\0' '\\n' < /proc/1234/environ",
+        {"cmd": {"cat ~/.env", "x"}}, frozenset(["hermes gateway restart"]),
+        b"cat ~/.env", bytearray(b"pkill hermes"), [b"hermes config set a b"],
+        b"\xff\xfe hermes gateway stop",
+    ]
+    ALLOWED = [
+        "pwd",
+        'opencode run --agent naquuuubot "status"',
+        'python3 "$NAQUUUU_WORKSPACE/scripts/relay_run.py" --status',
+        "import os; print(os.environ.get('HOME'))",
+        {"path": "notes/environment.md"},
+        {"count": 3, "flag": True, "none": None, "items": ["a", 1, 2.5]},
+        "hermes --version",
+        # Round 2: false-positive cuts and media caches.
+        "const k = process.env.NODE_ENV;", "cat .env.example", "cat .env.sample", "cat .env.template",
+        'python3 "$NAQUUUU_WORKSPACE/scripts/relay_run.py" --file /home/u/.hermes/image_cache/img_1.jpg',
+        "python3 relay_run.py --file /home/u/.hermes/audio_cache/a.ogg",
+        "python3 relay_run.py --file /home/u/.hermes/document_cache/doc_1.pdf",
+        "python3 relay_run.py --file /home/u/.hermes/video_cache/v.mp4",
+        "python3 relay_run.py --file /home/u/.hermes/cache/x/y.png",
+        "python3 relay_run.py --file $HERMES_HOME/image_cache/img_1.jpg",
+        "python3 relay_run.py --file ${HERMES_HOME}/image_cache/img_1.jpg",
+        "python3 relay_run.py --file %LOCALAPPDATA%\\hermes\\image_cache\\img_1.jpg",
+        {"file": "/home/u/.hermes/image_cache/img_1.jpg"},
+        'relay_run.py --file "/home/u/.hermes/image_cache/img_1.jpg"',
+        "hermes gateway status", "hermes -p synthetic gateway status", "hermes\ngateway status",
+        "hermes config show", "echo hi; echo hermes", "systemctl status ssh; echo hermes",
+        "service ssh restart", "printenvironment notes", "cat /proc/cpuinfo", b"pwd", {"a", "pwd"},
+    ]
+
+    def test_owner_whatsapp_turn_denies_host_only_actions(self):
+        with bind_source(self.OWNER):
+            self.assertFalse(must_deny_tool())
+            for args in self.DENIED:
+                with self.subTest(args=args):
+                    self.assertTrue(must_deny_host_only(args))
+
+    def test_owner_whatsapp_turn_allows_ordinary_actions(self):
+        with bind_source(self.OWNER):
+            for args in self.ALLOWED:
+                with self.subTest(args=args):
+                    self.assertFalse(must_deny_host_only(args))
+
+    def test_guest_whatsapp_turn_is_denied_by_both_gates(self):
+        with bind_source(self.GUEST):
+            self.assertTrue(must_deny_tool())
+            for args in self.DENIED:
+                with self.subTest(args=args):
+                    self.assertTrue(must_deny_host_only(args))
+
+    def test_non_whatsapp_and_unbound_turns_are_not_tripped(self):
+        with bind_source(_Source("telegram")):
+            for args in self.DENIED:
+                with self.subTest(args=args):
+                    self.assertFalse(must_deny_host_only(args))
+        for args in self.DENIED:
+            with self.subTest(args=args):
+                self.assertFalse(must_deny_host_only(args))  # no binding at all
+
+    def test_owner_turn_deny_and_allow_lists_hold_together(self):
+        """Every DENIED entry denies and every ALLOWED entry passes, in one owner turn."""
+        with bind_source(self.OWNER):
+            for args in self.DENIED:
+                self.assertTrue(must_deny_host_only(args), args)
+            for args in self.ALLOWED:
+                self.assertFalse(must_deny_host_only(args), args)
+
+    def test_executor_v2_to_v3_migration_is_equivalent_and_idempotent(self):
+        fresh = patch_executor(EXECUTOR_SOURCE)
+        v2 = EXECUTOR_SOURCE.replace(_EXECUTOR_ANCHOR, _EXECUTOR_V2)
+        self.assertIn(MARK, v2)
+        self.assertNotIn(HOST_ONLY_MARK, v2)
+        self.assertEqual(patch_executor(v2), fresh)
+        self.assertEqual(patch_executor(fresh), fresh)
+        self.assertEqual(fresh.count(MARK), 1)
+        self.assertEqual(fresh.count(HOST_ONLY_MARK), 1)
+        compile(fresh, "<executor-fixture>", "exec")
+
+    def test_executor_mixed_or_partial_markers_raise(self):
+        fresh = patch_executor(EXECUTOR_SOURCE)
+        v2 = EXECUTOR_SOURCE.replace(_EXECUTOR_ANCHOR, _EXECUTOR_V2)
+        for bad in (
+            fresh + "\n# " + HOST_ONLY_MARK,
+            fresh + "\n# " + MARK,
+            fresh.replace("must_deny_host_only(function_args)", "False"),
+            v2 + "\n# " + HOST_ONLY_MARK,
+            v2 + "\n# " + MARK,
+            v2.replace("must_deny_tool()", "False"),
+            EXECUTOR_SOURCE + "\n# " + HOST_ONLY_MARK,
+        ):
+            with self.subTest(bad=bad[-60:]):
+                with self.assertRaisesRegex(ValueError, "Partial owner-auth executor patch"):
+                    patch_executor(bad)
+
+    @staticmethod
+    def _patched_run_tool():
+        namespace = {"_ManagedToolResult": lambda **kwargs: kwargs}
+        exec(compile(patch_executor(EXECUTOR_SOURCE), "<executor-fixture>", "exec"), namespace)
+        return namespace["run_tool"]
+
+    @staticmethod
+    def _isolated(auth_module):
+        """Fake agent package, chosen wa_turn_auth, and no workspace path; restored on exit."""
+        agent = types.ModuleType("agent")
+        agent.relay_tools = object()
+        stack = contextlib.ExitStack()
+        stack.enter_context(mock.patch.dict(os.environ))
+        os.environ.pop("NAQUUUU_WORKSPACE", None)
+        stack.enter_context(mock.patch.dict(sys.modules, {"wa_turn_auth": auth_module, "agent": agent}))
+        return stack
+
+    def test_patched_executor_blocks_host_only_before_dispatch(self):
+        run_tool = self._patched_run_tool()
+        with self._isolated(wa_turn_auth):
+            with bind_source(self.OWNER):
+                blocked = run_tool({"command": "hermes gateway restart"})
+                allowed = run_tool({"command": "pwd"})
+            with bind_source(self.GUEST):
+                guest = run_tool({"command": "pwd"})
+        self.assertTrue(blocked["blocked"])
+        self.assertFalse(blocked["dispatched"])
+        self.assertIn("host-only action", blocked["result"])
+        self.assertEqual(allowed, "dispatched")
+        self.assertIn("Only the owner can run WhatsApp tools.", guest["result"])
+
+    def test_stale_wa_turn_auth_without_host_only_check_fails_closed(self):
+        stale = types.ModuleType("wa_turn_auth")
+        stale.must_deny_tool = lambda: False
+        run_tool = self._patched_run_tool()
+        before = sys.modules["wa_turn_auth"]
+        with self._isolated(stale):
+            result = run_tool({"command": "pwd"})
+        self.assertIs(sys.modules["wa_turn_auth"], before)
+        self.assertTrue(result["blocked"])
+        self.assertFalse(result["dispatched"])
+        self.assertIn("WhatsApp tool authorization unavailable.", result["result"])
 
 
 if __name__ == "__main__":

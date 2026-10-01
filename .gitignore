@@ -54,3 +54,6 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 ._*
+
+# Timestamped installer/policy backups (host-local; never commit)
+*.bak-*
