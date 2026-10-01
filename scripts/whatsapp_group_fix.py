@@ -31,8 +31,8 @@ Usage:
   python scripts/whatsapp_group_fix.py --dry-run     # preview only
   python scripts/whatsapp_group_fix.py               # apply + restart
   python scripts/whatsapp_group_fix.py --no-restart  # apply only
-  python scripts/whatsapp_group_fix.py --allow-user 62XXXXXXXXXX
-                                                     # also append one number
+  python scripts/whatsapp_group_fix.py --allow-user 62XXXXXXXXXX [--allow-user ...]
+                                                     # also append numbers
                                                      # to WHATSAPP_ALLOWED_USERS
   python scripts/whatsapp_group_fix.py --group 1203630XXXXXXXXXX@g.us
                                                      # allowlist one group JID
@@ -84,8 +84,13 @@ def hermes_home() -> str:
 
 
 def find_hermes_bin(home: str) -> str | None:
-    """Locate the hermes executable: install bin dir first, then PATH."""
+    """Locate the hermes executable: Hermes venv first, then install bin dir, then PATH.
+
+    The venv entry point carries Hermes' own dependencies; a PATH launcher can resolve
+    to an interpreter without them (e.g. `No module named 'dotenv'`)."""
     for candidate in (
+        os.path.join(home, "hermes-agent", "venv", "bin", "hermes"),
+        os.path.join(home, "hermes-agent", "venv", "Scripts", "hermes.exe"),
         os.path.join(home, "bin", "hermes.exe"),
         os.path.join(home, "bin", "hermes"),
     ):
@@ -254,8 +259,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--allow-user",
+        action="append",
         default=None,
-        help="also append one number (full international digits, no +) to WHATSAPP_ALLOWED_USERS",
+        help="also append a number (full international digits, no +) to WHATSAPP_ALLOWED_USERS; repeatable",
     )
     parser.add_argument(
         "--group",
@@ -296,17 +302,20 @@ def main() -> int:
         return 1
     text, had_bom, newline = parsed
 
-    allow_number: str | None = None
-    if args.allow_user:
-        allow_number = normalize_number(args.allow_user)
-        if allow_number is None:
-            print("FAIL  --allow-user needs full international digits (country code, no leading 0)")
+    allow_numbers: list[str] = []
+    for index, raw in enumerate(args.allow_user or [], start=1):
+        number = normalize_number(raw)
+        if number is None:
+            print(f"FAIL  --allow-user #{index} needs full international digits (country code, no leading 0)")
             return 1
+        if number not in allow_numbers:
+            allow_numbers.append(number)
 
     new_text, status = plan_changes(text, newline)
-    allow_status: str | None = None
-    if allow_number:
-        new_text, allow_status = update_allowed_users(new_text, newline, allow_number)
+    allow_statuses: list[str] = []
+    for number in allow_numbers:
+        new_text, one_status = update_allowed_users(new_text, newline, number)
+        allow_statuses.append(one_status)
     group_status: str | None = None
     if args.group:
         jid = args.group.strip()
@@ -315,7 +324,8 @@ def main() -> int:
             return 1
         new_text, group_status = update_group_list(new_text, newline, jid)
     changed = any(value != "already set" for value in status.values())
-    if allow_status and allow_status.startswith(("appended", "created")):
+    allow_added = any(s.startswith(("appended", "created")) for s in allow_statuses)
+    if allow_added:
         changed = True
     if group_status and group_status.startswith(("appended", "created")):
         changed = True
@@ -324,8 +334,8 @@ def main() -> int:
         state = status.get(key, "already set")
         detail = f"  ({key}={TARGET_MAP[key]})" if state in ("added", "updated") else ""
         print(f"{key:<28}: {state}{detail}")
-    if allow_status:
-        print(f"{ALLOWED_KEY:<28}: {allow_status}")
+    for index, one_status in enumerate(allow_statuses, start=1):
+        print(f"{ALLOWED_KEY + f' #{index}':<28}: {one_status}")
     if group_status:
         print(f"{GROUP_KEY:<28}: {group_status}")
     print("-" * 74)
@@ -382,7 +392,7 @@ def main() -> int:
             print(f"    | {line}")
 
     print("-" * 74)
-    if allow_status and allow_status.startswith(("appended", "created")):
+    if allow_added:
         print("NOTE  allowlisted users can trigger the relay -> opencode run on this host.")
     if not group_status:
         print("Tip   without --group no group is allowlisted (groups stay silent).")

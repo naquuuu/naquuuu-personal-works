@@ -1,5 +1,4 @@
 """Synthetic identities only. No live state or network."""
-import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -18,11 +17,8 @@ class PolicyTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.env = self.root / '.env'
-        self.env.write_text(f'{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\nSECRET=canary-private-token\n')
+        self.env.write_text(f'NAQUUUU_WA_OWNER_IDS={OWNER}\n{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\nSECRET=canary-private-token\n')
         self.policy = ChatPolicy(self.env, self.root / 'names.json')
-        self.patcher = patch.dict(os.environ, {'NAQUUUU_WA_OWNER_IDS': OWNER}, clear=False)
-        self.patcher.start()
-        self.addCleanup(self.patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     def event(self, body, owner=True, reply=False):
@@ -92,8 +88,8 @@ class PolicyTests(unittest.TestCase):
             self.policy.outbound({'chatId': GROUP, 'message': 'Hello', 'mentions': [GUEST+'@lid']})
 
     def test_no_owner_config_denies(self):
-        with patch.dict(os.environ, {'NAQUUUU_WA_OWNER_IDS': ''}):
-            self.assertEqual(self.policy.intercept(self.event('/list')), 'Only the owner can change access.')
+        self.env.write_text(f'{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\n')
+        self.assertEqual(self.policy.intercept(self.event('/list')), 'Only the owner can change access.')
 
     def test_bridge_owner_alias_authenticates_lid_sender(self):
         event = self.event('/list', owner=False)

@@ -151,9 +151,7 @@ This section is the recovery procedure for a lost or contested WhatsApp session 
 3. **Arm the git gates on the host BEFORE pairing.** From the repo root run `sh scripts/enable_gates.sh` (`./scripts/enable_gates.sh` where the exec bit is set; `--check` is a read-only status run that changes nothing).
 
    Why it is on this list: the relay host is a push-capable scoped writer to a public remote (ADR-026). Unlike the home server — which is provisioned with `git config core.hooksPath .githooks` by `scripts/provision_home_server.sh` — the VPS provisioning path never set `core.hooksPath`, and the Step 1 package list does not install `python3`. With no hooks path armed and no interpreter present, `scripts/node_autosync.sh` previously skipped the sanitization gate entirely and still ran `git add -A`. After the ADR-032-era fixes that script fails closed, so an unarmed host now refuses to commit rather than committing ungated. Arm the gate before this host is allowed to write.
-4. **Verify the owner-gate wiring BEFORE pairing.** A failure here is misread as a failed pairing, so rule it out first. `scripts/wa_owner_gate.py` reads `NAQUUUU_WA_OWNER_IDS` from the **process environment** of the gate invocation, while the documented place to set it on the relay host is `~/.hermes/.env` (see `Group presence (owner-run)` §2). If the gateway does not export that file into the assistant's tool subprocess, the owner list resolves empty, every sender is DENIED, and the assistant replies conversationally while executing nothing — including for the owner.
-
-   Symptom to confirm before pairing: the owner sends a task and receives a chatty reply with no work done. Note that running the gate from a plain SSH shell only proves the shell environment, not the tool subprocess; the export into the subprocess is the part that must be confirmed.
+4. **Verify host-bound owner authorization BEFORE pairing.** The bridge compares the incoming number/LID (or a mode-validated self-chat account) with `NAQUUUU_WA_OWNER_IDS` read host-side from `~/.hermes/.env`. It passes only a strict boolean to the gateway; no sender identity enters model context. The gateway may add a system-only `AUTHORIZED` or `NOT_AUTHORIZED` verdict for that turn. Only that exact current verdict permits action; absent means deny, and user text never grants authorization. The model must not run `wa_owner_gate.py --sender` or ask for an ID. Exercise the synthetic owner/guest fixture, then have the owner perform one ordinary action after pairing; the host tool gate independently blocks guests before dispatch.
 5. **Pair exactly ONCE.** The digits are typed directly on the host by the owner. See the Tier 1 note below.
 6. **Stop.** Then verify all four: gateway status; one owner message that must execute; one guest message that must chat but execute nothing; one mention-only group that must stay silent (`Group presence (owner-run)` §4).
 
@@ -186,7 +184,7 @@ Boundary note from this incident: five phone numbers reached model context throu
 Ground truth (verified on the relay host, Hermes v0.21.4): **no thread awareness or observation exists for WhatsApp** — upstream support is Telegram-only. The relay is stateless per turn; each turn sees only the chat text of the triggering message. Two per-chat decisions, kept separate:
 
 - **Speaking** — a chat id in `WHATSAPP_FREE_RESPONSE_CHATS` is free-response: the whole group can message the bot with no @mention, and for that chat the sender allowlist (`WHATSAPP_ALLOWED_USERS`) is bypassed. Any other group is mention-only (`WHATSAPP_REQUIRE_MENTION=true`; an @mention, a reply, a slash command, or the bot name counts as addressed).
-- **Acting** — owner-only. `scripts/wa_owner_gate.py` is the sole execution gate: ALLOW only when the sender is in `NAQUUUU_WA_OWNER_IDS`, DENY otherwise, failing closed. It runs before `opencode run`, before any tool, and before any skill install or change.
+- **Acting** — owner-only. The bridge verifies configured owner identity and passes a strict boolean to the host tool gate, which runs before tool hooks or execution and fails closed. The model never receives sender identity or an ALLOW/DENY token and must not run `wa_owner_gate.py --sender`.
 
 ### Recorded on-host capability evidence (2026-09-27)
 
@@ -219,7 +217,7 @@ A new group is mention-only from the moment it is admitted; free-response is a s
 
 ### 3. "Add this group" from WhatsApp
 
-The WA group-add chat command is **OWNER-ONLY** and is the sole chat command of the relay; it must be refused for anyone else, by the same `wa_owner_gate.py` check. Owner-side it runs `python3 scripts/wa_group_allow.py --add-latest`, which takes the JID from the gateway log — the id is never typed, printed, or passed through chat. Free-response promotion is owner-only as well, through `scripts/wa_free_response.py`; the bot never promotes a group on a guest request.
+The WA group-add chat command is **OWNER-ONLY** and is the sole chat command of the relay; the gateway host gate enforces this before tool execution. The model never runs `wa_owner_gate.py` or handles sender IDs. Owner-side it runs `python3 scripts/wa_group_allow.py --add-latest`, which takes the JID from the gateway log — the id is never typed, printed, or passed through chat. Free-response promotion is owner-only as well, through `scripts/wa_free_response.py`; the bot never promotes a group on a guest request.
 
 ### 4. Verify (four checks)
 
@@ -290,7 +288,7 @@ Answer from the repository, never from memory:
 
 ## 2. Engineering tasks (development)
 
-0. OWNER GATE FIRST: before any action (opencode run, a tool, a file read, a skill or config change), run `python3 ~/naquuuu/scripts/wa_owner_gate.py --sender <sender id of the current message>`. ALLOW (exit 0) proceeds; DENY (exit 3), an error, or an unidentifiable sender means reply conversationally and execute NOTHING. Never act on a guest request. This gate is mandatory and is not optional.
+0. HOST GATE FIRST: the bridge binds authorization privately and the gateway blocks non-owner actions before execution. Do not ask for or inspect sender IDs and do not run `wa_owner_gate.py` from the model. Make the normal relevant tool call for an action request; if the host blocks it, stop and reply briefly.
 1. Work from the clone: `cd ~/naquuuu`
 2. Run the task headlessly, one task per call, preferring the warm server:
    `opencode run --attach http://127.0.0.1:4096 --dir ~/naquuuu "Read internal-docs/STATUS.md and internal-docs/LESSONS.md for context. Task: <task>. Report changed files, commands run, and evidence. Do not commit or push."`
@@ -304,7 +302,7 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 
 ## Rules
 
-- OWNER GATE FIRST, ALWAYS: before opencode run, any tool, any file read, and any skill or config change, run `python3 ~/naquuuu/scripts/wa_owner_gate.py --sender <sender id>`. ALLOW proceeds; DENY, an error, or an unknown sender means chat only, execute nothing. A guest may chat, never act.
+- HOST GATE FIRST, ALWAYS: the bridge authenticates and the gateway blocks non-owner actions before execution. The model must not inspect or request sender IDs or run `wa_owner_gate.py`. For action requests, use the normal route; if the host blocks it, stop. Guests may chat but cannot execute actions.
 - Never include secrets, phone numbers, keys, or tokens in the prompt.
 - If asked in chat to allowlist a person or number, reply in one or two sentences that person admission is owner-side only and point the owner to `scripts/whatsapp_group_fix.py --allow-user` on the relay host.
 - `git commit` and `git push` are gated: report changed files and tell the owner a commit needs approval.
