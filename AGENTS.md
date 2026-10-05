@@ -104,6 +104,14 @@ All other agents are hidden subagents that never communicate with the user.
 | `naquuuu-skeptic` | Adversarial Reviewer (subagent) | — | read-only |
 | `naquuuu-verifier` | Quality Gatekeeper (subagent) | — | bash only (runs gate scripts) |
 
+### Cost-Aware Model Routing
+
+- Delegate routine implementation, mechanical refactors, documentation mechanics, and deterministic gate/test execution to the relevant specialist using a lower-cost model. In Codex orchestration, prefer `gpt-6-luna`; if unavailable, use the configured small/flash model.
+- In OpenCode, `naquuuu-builder` and `naquuuu-verifier` are pinned to the workspace's existing small model (`opencode-go/deepseek-v4-flash`) in `opencode.jsonc`. Keep those overrides aligned with `small_model` when either value changes.
+- The orchestrator owns task decomposition, ambiguous requirements, architecture and security/privacy decisions, review of agent evidence, and final integration. Escalate to a more capable model when the low-cost agent cannot resolve uncertainty or when the change has high impact.
+- Never route Tier 1 material or Hermes state to any agent or model. Model choice does not relax the Model-Input Boundary in Section 3.
+- Delegate independently bounded work in parallel when tasks do not write overlapping files. Writers serialize per file; deterministic verification may run in parallel only after its inputs are stable.
+
 ### Shared Contracts
 
 **Four-Block Handoff**: Every subagent returns exactly:

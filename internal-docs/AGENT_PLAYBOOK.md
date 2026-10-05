@@ -34,6 +34,16 @@ Both entry points also ship as Antigravity custom agents at `.agents/agents/naqu
 - **Sync rule.** `.opencode/agent/<name>.md` remains the source of truth; persona changes land in both surfaces in the same change (ADR-014), reviewed manually until a sync check exists.
 - **Model.** AGY-side work runs on the owner-selected Gemini model under the Antigravity subscription.
 
+## Model routing for delegated work
+
+Use the lowest-cost model that can complete a scoped task reliably, with the runtime made explicit:
+- **Codex orchestration:** route routine coding and deterministic checks to `gpt-6-luna` when available.
+- **OpenCode:** `naquuuu-builder` and `naquuuu-verifier` are configured in `opencode.jsonc` to use `opencode-go/deepseek-v4-flash`, which matches the top-level `small_model`.
+
+These routes apply to routine, well-scoped work. Keep task decomposition, security and privacy decisions, architecture, and final integration with `naquuuubot`. Escalate to the orchestrator or a stronger configured model when requirements are ambiguous, changes cross subsystem boundaries, failures need diagnosis beyond deterministic checks, or review finds material risk. Do not lower the review standard because a lower-cost model handled implementation.
+
+Never provide Tier 1 secrets, credentials, personal identifiers, private state, or other out-of-bounds content to any agent or model, regardless of model tier. Follow AGENTS.md Section 3's model-input boundary; if a task cannot be safely stripped or synthesized, stop and report the blocker for human handling.
+
 ---
 
 ## 1. naquuuubot: the Chief of Staff
@@ -83,6 +93,8 @@ Be honest — if it doesn't match my style, say so.
 1. Implementing features across `projects/<slug>`, scripts, or blog interactive elements.
 2. Running local builds and test suites.
 3. Prototyping fast spikes in `projects/random-stuff/`.
+
+**Model routing.** In Codex orchestration, prefer `gpt-6-luna` for routine, well-scoped coding when available. In OpenCode, this agent is pinned to `opencode-go/deepseek-v4-flash` in `opencode.jsonc`. Escalate uncertain design, cross-system changes, or security-sensitive judgment to `naquuuubot`.
 
 **Prompt pattern**
 ```text
@@ -151,6 +163,8 @@ with DECISION_LOG.md. Rank findings by severity.
 1. Running the full gate matrix before a commit or push.
 2. Verifying blog reliability QA after HTML/CSS/JS changes.
 3. Host readiness checks before switching active hosts (Phase 4).
+
+**Model routing.** In Codex orchestration, prefer `gpt-6-luna` for deterministic gate execution and evidence capture when available. In OpenCode, this agent is pinned to `opencode-go/deepseek-v4-flash` in `opencode.jsonc`. Route interpretation of ambiguous failures or security implications to `naquuuubot`.
 
 **Gate matrix**
 | Gate | Command |

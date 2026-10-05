@@ -54,6 +54,7 @@
     "naquuuu-builder": {
       "description": "Software & Prototype Builder. Implements code across projects, scripts, and blog features, then runs the relevant gates.",
       "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-flash",
       "hidden": true,
       "permission": {
         "edit": "allow",
@@ -94,6 +95,7 @@
     "naquuuu-verifier": {
       "description": "Quality Gatekeeper. Runs workspace gate scripts and reports pass or fail with raw evidence.",
       "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-flash",
       "hidden": true,
       "permission": {
         "edit": "deny",

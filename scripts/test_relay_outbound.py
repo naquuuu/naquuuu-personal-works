@@ -91,6 +91,51 @@ class OutboundSanitizationTests(unittest.TestCase):
         self.assertFalse(is_clean)
         self.assertEqual(sanitized, SAFE_FALLBACK_REPLY)
 
+    def test_explicit_art_or_affection_request_allows_only_bounded_repetition(self):
+        from relay_outbound import requested_creative_allowance
+
+        art = requested_creative_allowance("Draw a small ASCII art cat")
+        art_output = "```text\n /\\_/\\\n*---- (oo) ----*\n > ^ <\n*---- (oo) ----*\n*---- (oo) ----*\n```"
+        sanitized, clean = sanitize_outbound_text(art_output, repetition_allowance=art)
+        self.assertTrue(clean)
+        self.assertEqual(sanitized, art_output)
+        prose = "I really like this. I really like this. I really like this."
+        self.assertFalse(sanitize_outbound_text(prose, repetition_allowance=art)[1])
+        repeated_art_line = "A repeated ASCII art border"
+        over_count_art = "\n".join([repeated_art_line] * 13)
+        self.assertFalse(sanitize_outbound_text(over_count_art, repetition_allowance=art)[1])
+        oversized_art = "\n".join(["distinct art row " + str(i) + " x" * 34 for i in range(37)] + [repeated_art_line] * 3)
+        self.assertGreater(len(oversized_art), 1200)
+        self.assertFalse(sanitize_outbound_text(oversized_art, repetition_allowance=art)[1])
+
+        phrase = requested_creative_allowance('Say "I love you" 5 times')
+        repeated = "I love you. I love you. I love you. I love you. I love you."
+        sanitized, clean = sanitize_outbound_text(repeated, repetition_allowance=phrase)
+        self.assertTrue(clean)
+        self.assertEqual(sanitized, repeated)
+        too_many = repeated + " I love you."
+        self.assertFalse(sanitize_outbound_text(too_many, repetition_allowance=phrase)[1])
+        self.assertIsNone(requested_creative_allowance("Say I love you 101 times"))
+        self.assertIsNone(requested_creative_allowance("berikan 101 kata sayang melalui asci text art"))
+
+        # An allowance never bypasses draft or harness-leak detection.
+        dirty = "<think>Draft</think> " + repeated
+        self.assertFalse(sanitize_outbound_text(dirty, repetition_allowance=phrase)[1])
+
+    def test_screenshot_indonesian_count_and_art_requests(self):
+        from relay_outbound import requested_creative_allowance
+
+        exact_request = "berikan 100 kata sayang ke ai melalui asci text art"
+        art_request = requested_creative_allowance(exact_request)
+        self.assertEqual(art_request["phrase"], "sayang")
+        self.assertEqual(art_request["max_repeats"], 100)
+        word_art = "```text\n" + " ".join(["sayang"] * 100) + "\n```"
+        self.assertTrue(sanitize_outbound_text(word_art, repetition_allowance=art_request)[1])
+
+        followup = requested_creative_allowance("10 kata sayang deh untuk ayi sayang")
+        self.assertEqual(followup["phrase"], "sayang")
+        self.assertEqual(followup["max_repeats"], 10)
+
     def test_repeated_notes_rejected(self):
         payload = (
             "System Note: This conversation is happening via WhatsApp.\n\n"
@@ -162,6 +207,19 @@ class OutboundSanitizationTests(unittest.TestCase):
         result, is_clean = sanitize_relay_events(dirty_events)
         self.assertFalse(is_clean)
         self.assertEqual(result, SAFE_FALLBACK_REPLY)
+
+    def test_only_final_assistant_message_is_delivered(self):
+        events = [
+            {'type': 'text', 'part': {'messageID': 'synthetic-interim', 'text': 'I will inspect the files.'}},
+            {'type': 'tool_use', 'part': {'text': 'SYNTHETIC_SECRET_CANARY'}},
+            {'type': 'text', 'part': {'messageID': 'synthetic-final', 'text': 'Tugas selesai.'}},
+        ]
+        self.assertEqual(sanitize_relay_events(events), ('Tugas selesai.', True))
+        self.assertEqual(sanitize_relay_events(events[:2]), ('', True))
+        self.assertEqual(sanitize_relay_events([
+            {'type': 'text', 'part': {'messageID': 'first', 'text': 'Interim response.'}},
+            {'type': 'text', 'part': {'messageID': 'last', 'text': 'Final response.'}},
+        ]), ('Final response.', True))
 
 
 if __name__ == "__main__":

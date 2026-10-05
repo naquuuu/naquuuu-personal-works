@@ -1,0 +1,18 @@
+[Unit]
+Description=Hermes Agent Dashboard (Tailscale-only)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.hermes/hermes-agent
+Environment=HERMES_HOME=%h/.hermes
+Environment=HERMES_AGENT_NOTIFY_INTERVAL=60
+Environment=NAQUUUU_WORKSPACE=%h/naquuuu
+EnvironmentFile=%h/.hermes/.env
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python -m hermes_cli.main dashboard --host 127.0.0.1 --port 9119 --no-open
+Restart=always
+RestartSec=5
+RestartPreventExitStatus=78
+
+[Install]
+WantedBy=default.target

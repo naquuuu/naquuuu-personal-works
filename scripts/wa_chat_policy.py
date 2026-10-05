@@ -14,7 +14,7 @@ import shutil
 import tempfile
 import threading
 
-from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY
+from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY, requested_creative_allowance
 from wa_owner_gate import evaluate, is_sender_id, digits_only
 
 GROUPS = 'WHATSAPP_GROUP_ALLOWED_USERS'
@@ -54,6 +54,7 @@ class ChatPolicy:
         self.cache_path = cache_path
         self.names: dict[str, str] = {}
         self.active_turns: dict[str, dict] = {}
+        self.creative_requests: dict[tuple[str, str], tuple[dict, dt.datetime]] = {}
         try:
             saved = json.loads(cache_path.read_text(encoding='utf-8'))
             if isinstance(saved, dict):
@@ -86,14 +87,33 @@ class ChatPolicy:
                 _atomic(self.cache_path, json.dumps(self.names, ensure_ascii=False))
         chat_id = str(event.get('chatId') or '')
         if chat_id:
+            body = str(event.get('body') or '')
+            quoted_text = str(event.get('quotedText') or '') if event.get('hasQuotedMessage') else ''
+            allowance = requested_creative_allowance(body, quoted_text)
             with LOCK:
                 self.active_turns[chat_id] = {
                     'status_sent': False,
                     'started_at': dt.datetime.now(dt.timezone.utc),
                 }
+                now = dt.datetime.now(dt.timezone.utc)
+                self.creative_requests = {
+                    key: value for key, value in self.creative_requests.items()
+                    if value[1] > now
+                }
+                message_id = str(event.get('messageId') or '')
+                if allowance and message_id:
+                    self.creative_requests[(chat_id, message_id)] = (allowance, now + dt.timedelta(minutes=10))
+                while len(self.creative_requests) > 128:
+                    self.creative_requests.pop(next(iter(self.creative_requests)))
 
-    def scrub(self, text: str) -> str:
-        sanitized, is_clean = sanitize_outbound_text(text)
+    def scrub(self, text: str, *, chat_id: str | None = None, reply_to: str | None = None) -> str:
+        repetition_allowance = None
+        if chat_id and reply_to:
+            with LOCK:
+                grant = self.creative_requests.get((chat_id, reply_to))
+                if grant and grant[1] > dt.datetime.now(dt.timezone.utc):
+                    repetition_allowance = grant[0]
+        sanitized, is_clean = sanitize_outbound_text(text, repetition_allowance=repetition_allowance)
         if not is_clean:
             return SAFE_FALLBACK_REPLY
 
@@ -132,11 +152,12 @@ class ChatPolicy:
                     turn['status_sent'] = True
 
         result = dict(payload)
+        reply_to = str(payload.get('replyTo') or '') or None
         for key in ('message', 'caption', 'question', 'fileName', 'name', 'address'):
             if isinstance(result.get(key), str):
-                result[key] = self.scrub(result[key])
+                result[key] = self.scrub(result[key], chat_id=chat_id, reply_to=reply_to)
         if isinstance(result.get('options'), list):
-            result['options'] = [self.scrub(str(v)) for v in result['options']]
+            result['options'] = [self.scrub(str(v), chat_id=chat_id, reply_to=reply_to) for v in result['options']]
         for mention in result.get('mentions') or []:
             if not is_sender_id(mention) or not self.names.get(digits_only(mention)):
                 raise ValueError('Unresolved mention; delivery refused.')
@@ -144,11 +165,11 @@ class ChatPolicy:
 
     def intercept(self, event: dict) -> str | None:
         # Authentication runs BEFORE examining/parsing the command body.
-        owner, _ = evaluate(str(event.get('senderId') or ''))
+        owner, _ = evaluate(str(event.get('senderId') or ''), self.env_path.parent)
         # Baileys may expose an opaque LID as senderId and the same sender's
         # phone JID as senderAltId. Both fields must come from the bridge event.
         if not owner:
-            owner, _ = evaluate(str(event.get('senderAltId') or ''))
+            owner, _ = evaluate(str(event.get('senderAltId') or ''), self.env_path.parent)
         body = str(event.get('body') or '').strip()
         command = body.split(maxsplit=1)[0] if body else ''
         if command not in COMMANDS:
@@ -170,7 +191,7 @@ class ChatPolicy:
                     return 'Reply to the person, or use the group command inside that group.'
                 if key == PEOPLE:
                     target = digits_only(target)
-                    if command == '/remove' and evaluate(target)[0]:
+                    if command == '/remove' and evaluate(target, self.env_path.parent)[0]:
                         return 'Owner access cannot be removed from chat.'
                 entries = _entries(text, key)
                 if command == '/remove':

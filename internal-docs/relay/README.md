@@ -54,7 +54,7 @@ Answer from the repository, never from memory:
 
 ## 2. Engineering tasks (development)
 
-0. OWNER GATE FIRST: before any action (opencode run, a tool, a file read, a skill or config change), run `python3 scripts/wa_owner_gate.py --sender <sender id of the current message>`. ALLOW (exit 0) proceeds; DENY (exit 3), an error, or an unidentifiable sender means reply conversationally and execute NOTHING. Never act on a guest request. This gate is mandatory and is not optional.
+0. OWNER GATE: the Hermes host authenticates bridge-provided sender identity before any tool middleware or dispatch. Never pass a sender ID from model context or run `wa_owner_gate.py --sender` from chat. Missing identity/config denies tools; guests remain chat-only.
 1. Work from the hub: `cd /c/personal/naquuuu`
 2. Run the task headlessly, one task per call:
    `opencode run "Read internal-docs/STATUS.md for context. Task: <task>. Report changed files, commands run, and evidence. Do not commit or push."`
@@ -67,7 +67,7 @@ Give opencode: the goal, file paths (never pasted content), and done-when criter
 
 ## Rules
 
-- OWNER GATE FIRST, ALWAYS: before opencode run, any tool, any file read, and any skill or config change, run `python3 scripts/wa_owner_gate.py --sender <sender id>`. ALLOW proceeds; DENY, an error, or an unknown sender means chat only, execute nothing. A guest may chat, never act.
+- OWNER GATE: host code enforces owner authorization before tools, including tool hooks and background execution. Do not provide sender IDs or invoke a model-supplied identity check. Any unknown identity or configuration error is denied.
 - Never include secrets, phone numbers, keys, or tokens in the prompt.
 - The relay runs opencode with the config default model `opencode-go/deepseek-v4.1-flash` (from `opencode.jsonc`); or pass `--model opencode-go/deepseek-v4.1-flash` explicitly.
 - If asked in chat to allowlist a person or number, reply in one or two sentences that person admission is owner-side only and point the owner to `scripts/whatsapp_group_fix.py --allow-user` on the relay host.
@@ -104,7 +104,7 @@ Group admission and person admission are independent: allowlisting a group does 
 - Owner-side add on the relay host, one number per invocation, full international digits with no `+`: `python3 scripts/whatsapp_group_fix.py --allow-user <digits>` (backs up `~/.hermes/.env`, appends to `WHATSAPP_ALLOWED_USERS`, restarts).
 - Verify: `python3 scripts/whatsapp_group_fix.py --dry-run`; `python3 scripts/wa_group_allow.py --list`; `hermes gateway status`.
 - Fallback: edit `WHATSAPP_ALLOWED_USERS` in `~/.hermes/.env`, then `systemctl --user restart hermes-gateway.service`.
-- Never `WHATSAPP_ALLOWED_USERS=*` or `WHATSAPP_ALLOW_ALL_USERS` (rejected as unsafe, ADR-024): add named people, never the whole room. Allowlist membership grants speaking, not operating: `opencode run` stays reachable only for an owner through `scripts/wa_owner_gate.py` (ADR-016 residual risk).
+- Never `WHATSAPP_ALLOWED_USERS=*` or `WHATSAPP_ALLOW_ALL_USERS` (rejected as unsafe, ADR-024): add named people, never the whole room. Allowlist membership grants speaking, not operating; the host-side tool gate grants execution only to a verified owner.
 
 ## Group presence (Mode 2)
 
@@ -112,7 +112,7 @@ Group behaviour is decided per chat, and two decisions stay separate: who may **
 
 **Speaking — free-response per group.** A chat id listed in `WHATSAPP_FREE_RESPONSE_CHATS` is free-response: anyone in that group can message the bot with no @mention, and for that chat the per-sender allowlist (`WHATSAPP_ALLOWED_USERS`) is bypassed. That bypass is deliberate and owner-set: a guest who was never allowlisted as a person can still hold a conversation in that group. Every other group stays mention-only — the bot answers only on an @mention, a reply to it, a slash command, or its name (`mention_patterns`), under `WHATSAPP_REQUIRE_MENTION=true`. A newly allowlisted group is mention-only until the owner promotes it.
 
-**Acting — owner-only.** A speaker is not an operator. The only reliable execution gate is `scripts/wa_owner_gate.py`: the relay skill runs it before `opencode run`, before any tool executes, and before any skill install or change; ALLOW only when the sender is an owner (`NAQUUUU_WA_OWNER_IDS`, host env, never in the repo), DENY otherwise, and the gate fails closed. On DENY the assistant still replies conversationally and executes nothing. Guests can always chat; only the owner can provoke tool execution. Neither the mention gate nor any allowlist is an execution gate.
+**Acting — owner-only.** A speaker is not an operator. The Hermes host binds a trusted owner decision to each WhatsApp turn and blocks tool middleware/dispatch for guests and unknown senders. The model never supplies sender IDs or performs authorization. Missing identity/configuration denies execution; guests can still chat.
 
 **Silence.** The gateway accepts `NO_REPLY`, so when nothing is worth saying the assistant emits `NO_REPLY` and sends no message.
 
@@ -122,7 +122,7 @@ Group behaviour is decided per chat, and two decisions stay separate: who may **
 - Group admission stays a separate owner-run command: `scripts/wa_group_allow.py --list | --add-latest | --add <CHATID> | --remove <CHATID>` manages `WHATSAPP_GROUP_ALLOWED_USERS`.
 - Model pin: the relay runs opencode with the config default model `opencode-go/deepseek-v4.1-flash` (from `opencode.jsonc`); pass `--model opencode-go/deepseek-v4.1-flash` only to override explicitly.
 - Persona/display change: the `WHATSAPP_SOUL.md` group-presence text lands on both the repo copy and `~/.hermes/SOUL.md` on the relay host (mirror rule, ADR-027).
-- Safety note: free-response is scoped to the listed chats and is **not** `WHATSAPP_ALLOW_ALL_USERS`; allow-all stays refused and unused (ADR-024). Free-response widens who may speak, never who may execute — the execution boundary is `wa_owner_gate.py`, and it must fail closed.
+- Safety note: free-response is scoped to the listed chats and is **not** `WHATSAPP_ALLOW_ALL_USERS`; allow-all stays refused and unused (ADR-024). Free-response widens who may speak, never who may execute — Hermes enforces the execution boundary before tool middleware.
 
 ## Deferred
 - Job IDs are informal (`job <HHMM>`); per-job approvals were superseded by ADR-016 (autonomous execution). A durable queue returns with M2 worker dispatch (ADR-029, authored and pending), not a per-job approval gate.

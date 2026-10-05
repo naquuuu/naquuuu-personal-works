@@ -653,7 +653,7 @@ def avatar_svg(seed: str) -> str:
 
 
 def agent_card(agent: Agent) -> str:
-    persona = clip(clean(agent.description), PERSONA_MAX)
+    persona = clip(clean(agent.description), 64)
     mode = clean(agent.mode) or "unknown"
     permission = clean(agent.permission)
     meta = mode if not permission else f"{mode} / {clip(permission, 48)}"
@@ -670,7 +670,7 @@ def agent_card(agent: Agent) -> str:
     )
     touched = ""
     if agent.file_paths:
-        listed = " ".join(BULLET.join(esc(path) for path in agent.file_paths[:3]))
+        listed = (" " + BULLET + " ").join(esc(Path(path.replace("\\", "/")).name) for path in agent.file_paths[:3])
         touched = f'<p class="bot-files"><span class="k">files</span> {listed}</p>'
     last = ""
     if agent.last_label:
@@ -728,10 +728,10 @@ CSS = """
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 html[data-lens="culture"] {
-  --bg-primary: #120305;
-  --bg-surface: #1B1214;
-  --bg-elevated: #241A1C;
-  --bg-input: #2C2023;
+  --bg-primary: #160E10;
+  --bg-surface: #22171A;
+  --bg-elevated: #2B1D21;
+  --bg-input: #322227;
   --border-subtle: #362529;
   --border-active: #4F353B;
   --text-primary: #F5ECE8;
@@ -950,6 +950,9 @@ section { margin: 0 0 1.8rem; }
 .note { font-size: 0.78rem; color: var(--text-muted); max-width: var(--measure); }
 @media (max-width: 1080px) { .lanes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .head-meta { margin-inline-start: 0; } }
+@media (max-width: 900px) { .edges, .edge-label { display: none; } }
+.bot-persona { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bot-files { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 520px) {
   .lanes { grid-template-columns: minmax(0, 1fr); }
   .tl { grid-template-columns: minmax(0, 1fr); }
@@ -1055,11 +1058,16 @@ SCRIPT = """
     });
   }
 
+  try {
+    root.setAttribute("data-lens", localStorage.getItem("naquuuu-agent-mode") || (matchMedia("(prefers-color-scheme: dark)").matches ? "culture" : "systems"));
+  } catch (_) {}
+  if (lensBtn) lensBtn.textContent = root.getAttribute("data-lens") === "culture" ? "dark mode" : "light mode";
   if (lensBtn) {
     lensBtn.addEventListener("click", function () {
       var next = root.getAttribute("data-lens") === "systems" ? "culture" : "systems";
       root.setAttribute("data-lens", next);
-      lensBtn.textContent = "lens: " + next;
+      lensBtn.textContent = next === "culture" ? "dark mode" : "light mode";
+      try { localStorage.setItem("naquuuu-agent-mode", next); } catch (_) {}
       if (themeMeta) themeMeta.setAttribute("content", token("--bg-surface"));
       draw();
     });
@@ -1141,18 +1149,18 @@ def render_html(state: State, dashes: int, inline_width: int, redactions: int) -
     <a class="brand" href="#top"><span class="dot" aria-hidden="true"></span>naquuuu</a>
     <div class="head-meta">
       <span class="pill badge" id="live-badge" data-live="static" aria-live="polite">static</span>
-      <span class="pill">session {esc(state.session)}</span>
+      <span class="pill" title="{esc(state.session)}">OpenCode session</span>
       <span class="pill" id="live-stamp">written {esc(clock)}</span>
     </div>
     <div class="head-actions">
-      <button type="button" id="lens-btn">lens: culture</button>
+      <button type="button" id="lens-btn">dark mode</button>
       <button type="button" id="reload-btn">reload</button>
     </div>
   </div>
 </header>
 <main class="wrap" id="top">
-  <h1>session map: {esc(state.session)}</h1>
-  <p class="kicker">game bot view of the roster at work. lanes read left to right as the pipeline. a card lights up when that agent was the last one to move. a dashed card means its last tool call failed.</p>
+  <h1>agent activity</h1>
+  <p class="kicker">Who is working, what is queued, and what needs attention.</p>
   <p class="meta-row">
     <span>active: {esc(active_names)}</span><span>{BULLET}</span>
     <span>blocked: {esc(blocked_names)}</span><span>{BULLET}</span>
@@ -1182,8 +1190,7 @@ def render_html(state: State, dashes: int, inline_width: int, redactions: int) -
 </main>
 <footer class="wrap site-footer">
   <p class="foot-wordmark" aria-hidden="true">naquuuu</p>
-  <div class="checks">{''.join(checks)}</div>
-  <p class="note">telemetry lives in {esc(DATA_DIRNAME)} and holds paths, commands, and task text only. file contents are never recorded. credential shaped strings are replaced with {esc(REDACTED)} twice, once when the record is written and again when this page is built, so a key in a record cannot reach a file git would accept. this page holds itself to the same dash and inline width rules as the blog.</p>
+  <details><summary>About this view</summary><p class="note">OpenCode activity only. Hermes conversations are shown in the Hermes dashboard. Credentials are scrubbed before display.</p><div class="checks">{''.join(checks)}</div></details>
 </footer>
 <script>{SCRIPT}</script>
 </body>

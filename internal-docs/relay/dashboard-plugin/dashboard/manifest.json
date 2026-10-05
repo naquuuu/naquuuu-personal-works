@@ -1,0 +1,12 @@
+{
+  "name": "naquuuu-activity",
+  "label": "Agents",
+  "description": "OpenCode agent activity, without conversation content.",
+  "icon": "Activity",
+  "version": "1.0.0",
+  "tab": {"path": "/agents", "position": "end"},
+  "slots": [],
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

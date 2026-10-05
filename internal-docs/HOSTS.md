@@ -1,9 +1,9 @@
 # Host Topology and Switch Runbook (HOSTS.md)
 
 - Date: 2026-09-25
-- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. M2 is approved and partially staged (ADR-029): drain timer and offline queue test are ready, but worker SSH authentication blocks key authorization and real execution. Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`), not applied. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated.
+- Status: Phase 4 in progress. The VPS is the live relay host (M1 complete, ADR-026); the laptop remains the hub and a workstation/co-writer. M2 is approved and partially staged (ADR-029): drain timer and offline queue test are ready, but worker SSH authentication blocks key authorization and real execution. Tailscale ACL hardening is drafted (`internal-docs/TAILSCALE_ACL.md`), not applied. DigitalOcean Managed Agents is an approved managed execution host (ADR-019), gated. ADR-043 (Proposed) moves the relay standby role and the WhatsApp rollback session from the laptop to `mipad-linux` because the laptop is entering employer device management.
 - Scope: host classes, topology, credential boundaries, bootstrap, authority, switch/failover, readiness, and remote access.
-- Related: spec Sections 4 and 10; ADR-011 through ADR-029; the Phase 4 research doc.
+- Related: spec Sections 4 and 10; ADR-011 through ADR-029, ADR-043; the Phase 4 research doc.
 
 ## 1. Topology Overview
 
@@ -14,12 +14,13 @@ The owner approved a decoupled topology on 2026-09-23 (ADR-019 amendment): the r
 ```mermaid
 flowchart LR
   P["Phone (client only)"]
-  L["Laptop (workstation/co-writer): opencode roster, hooks, doctl; gateway stopped"]
+  L["Laptop (workstation/co-writer, employer-managed): opencode roster, hooks, doctl; no relay role"]
   D["DO Managed Agents (RIC1, preview): Harness Runtime, Action Gateway"]
   V["VPS (live relay host, scoped writer): Hermes gateway, WhatsApp bridge, opencode, clone"]
-  H["Home-server laptop mipad-linux (synced replica; M2 worker - proposed, pending)"]
+  H["Home-server laptop mipad-linux (synced replica; relay standby per ADR-043; M2 worker - pending)"]
   P -->|"WhatsApp via Hermes"| V
   P -->|"Tailscale SSH/RDP"| L
+  P -->|"Tailscale SSH (kill switch)"| V
   L -->|"doctl harness-runtime (sessions, files, port-forward)"| D
   L <-->|"auto-sync (10 min / 5 min)"| V
   V <-->|"auto-sync (5 min) / M2 dispatch (pending)"| H
@@ -29,11 +30,11 @@ flowchart LR
 
 | Host | Class | What runs there | Authority | Access path | Current status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Laptop | Workstation, self-hosted | opencode with the 7-agent roster; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface). Hermes gateway stopped; the local WhatsApp session copy is retained as rollback | Workstation/co-writer; relay authority moved to the VPS | Local console; Tailscale SSH/RDP from the phone | Active; relay moved off it (gateway stopped) |
+| Laptop | Workstation, self-hosted | opencode with the 7-agent roster; git hooks; doctl; Tailscale; OpenSSH (installed, stopped; SSH deferred per ADR-020); RDP (RDP scoped to the Tailscale interface). Hermes gateway stopped; the WhatsApp rollback session copy moves to `mipad-linux` and is deleted here (ADR-043, owner-run, pending) | Workstation/co-writer; relay authority moved to the VPS; no longer the relay standby (ADR-043) | Local console; Tailscale SSH/RDP from the phone | Active; entering employer device management (screen lock, disk encryption with central key escrow, app inventory and allowlisting, browser extension allowlist); Tailscale, OpenSSH and RDP may be restricted, so the laptop is not a dependency for relay operations |
 | DO Managed Agents | Managed execution host (ADR-019) | Harness Runtime sessions (Stage A planned); Action Gateway MCP (Stage B live) | None; sessions are disposable | doctl and relay dispatch; no inbound; port-forward for dashboards | Stage B proven (connectivity only); Stage A blocked until the Phase 4 gate set passes (Section 9); sandboxed worker only; RIC1; preview terms |
 | VPS | Live relay host (decoupled decision); scoped writer | Hermes gateway (systemd user service, linger enabled) + WhatsApp bridge (bot mode) + opencode 1.18.32 (`opencode-go` auth) + workspace clone at `~/naquuuu`; M2 dispatch origin (authored, pending) | Holds relay authority; repo-scoped write via ed25519 deploy key ("vps-relay (M1)") | Tailscale; SSH key-only | Live (Tencent Cloud Lighthouse, 2 vCPU / 2 GB / 40 GB, Singapore, Ubuntu 24.04 LTS); WhatsApp tasks verified end-to-end; see `internal-docs/relay/VPS_RELAY_RUNBOOK.md`; M2 dispatch authored (ADR-029), not live |
-| Home-server laptop (`mipad-linux`) | Synced replica; M2 worker (Proposed - pending) | opencode 1.18.32; workspace clone; auto-sync (systemd user timer, 5 min); Tailscale; M2 worker dispatch target (`scripts/worker_exec.sh`, authored, pending; dedicated relay-to-worker key `NAQUUUU_WORKER_KEY`); i5-8250U / 8 GB RAM / 219 GB NVMe, Ubuntu 24.04 | None (replica; no relay authority); the M2 worker is expected not to commit or push (policy, not an enforced mechanism; the clone is a replica with no push credentials) | Tailscale; inbound SSH from the relay host (M2, pending) | Onboarded; owner follow-ups pending (`opencode auth login`, reboot) |
-| Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH/RDP to the laptop | In use |
+| Home-server laptop (`mipad-linux`) | Synced replica; relay standby (ADR-043, Proposed); M2 worker (Proposed - pending) | opencode 1.18.32; workspace clone; auto-sync (systemd user timer, 5 min); Tailscale; M2 worker dispatch target (`scripts/worker_exec.sh`, authored, pending; dedicated relay-to-worker key `NAQUUUU_WORKER_KEY`); i5-8250U / 8 GB RAM / 219 GB NVMe, Ubuntu 24.04 | None (replica; no relay authority until a switch per Section 5.2); holds the WhatsApp rollback session copy (owner-private, ADR-043); the M2 worker is expected not to commit or push (policy, not an enforced mechanism; the clone is a replica with no push credentials) | Tailscale; inbound SSH from the relay host (M2, pending) | Onboarded; owner follow-ups pending (`opencode auth login`, reboot); standby readiness pending (Hermes install, rollback session copy, Linux `host_check.py`, drill) |
+| Phone | Client only | WhatsApp; Tailscale client for SSH/RDP | None; never holds runtime authority | WhatsApp via Hermes; Tailscale SSH to the VPS (kill switch: `hermes gateway stop`) and to `mipad-linux`; Tailscale SSH/RDP to the laptop while allowed | In use; must be able to stop the relay without the laptop (ADR-043) |
 
 ## 3. Credential and Data Boundaries
 
@@ -56,7 +57,7 @@ flowchart LR
 1. Set `NAQUUUU_WORKSPACE` (Windows) or `$NAQUUUU_WORKSPACE` (Linux) in the host env; hub `.env` carries the shared values.
 2. Hooks: confirm `core.hooksPath=.githooks` with `pre-commit` and `pre-push` present; run `python scripts/verify_sanitization.py` (today: PASS).
 3. opencode: confirm the 7-agent roster and the model pins in `opencode.jsonc`.
-4. Hermes: install at `%LOCALAPPDATA%\hermes`; start the gateway; keep WhatsApp pairing owner-private.
+4. Hermes: installed at `%LOCALAPPDATA%\hermes`; gateway stays stopped and auto-start disarmed. The laptop is no longer the relay standby (ADR-043); keep no WhatsApp session copy here.
 5. doctl: 1.171.0 via winget; token read from hub `.env` as `DIGITALOCEAN_ACCESS_TOKEN`; no doctl config file.
 6. Readiness: `python scripts/host_check.py`; expect RESULT READY.
 
@@ -79,8 +80,18 @@ Status: executed 2026-09-25 (M1 complete, ADR-026). Execution runbook: `internal
 3. Provider auth; Hermes gets its own provider key in the host env (never in the repo).
 4. Run `opencode serve` bound to loopback/Tailscale with `OPENCODE_SERVER_PASSWORD`.
 5. Run the Hermes gateway under systemd (user service; linger enabled).
-6. Move the WhatsApp session from the laptop (laptop copy retained as rollback); re-pair only if the copied session is rejected.
+6. Move the WhatsApp session from the laptop; re-pair only if the copied session is rejected. The rollback copy now lives on `mipad-linux`, not the laptop (ADR-043).
 7. Run the readiness checks, then a switch drill (Section 5).
+
+### 4.4 Home-server laptop `mipad-linux` as relay standby (ADR-043, pending)
+
+All steps are owner-run; WhatsApp session files never pass through chat, the repo, or a model context.
+
+1. Install Hermes (same installer and flags as the VPS runbook Step 3); do not enable the gateway service or any auto-start.
+2. Mirror the WhatsApp-related `~/.hermes/.env` lines and `~/.hermes/SOUL.md` from the VPS (host-only, mode 0600).
+3. Copy the WhatsApp rollback session from the laptop to `mipad-linux` over Tailscale (scp), verify it is readable, then delete the laptop copy under `%LOCALAPPDATA%\hermes\whatsapp\session`.
+4. Readiness: `host_check.py` must support Linux paths (`~/.hermes`) before it can gate this host; until then, check gateway stopped and port 3000 free by hand.
+5. Run the failover drill in Section 5.4 (VPS to `mipad-linux` and back).
 
 ## 5. Authority and Switches
 
@@ -98,13 +109,13 @@ Status: executed 2026-09-25 (M1 complete, ADR-026). Execution runbook: `internal
 2. Ensure its tree is committed and pushed (the hooks guarantee gates).
 3. On the standby: pull, run `host_check.py` (`host_check.py` refuses local dev when the active tree is dirty or ahead, per spec Phase 4 step 3), start the gateway; re-pair WhatsApp only if the copied session is rejected.
 4. Verify with a phone "hello" plus one repo-status question before declaring the switch done.
-5. Run one deliberate drill in both directions (VPS to laptop and back) before declaring the topology settled (spec Phase 4 step 4).
+5. Run one deliberate drill in both directions (VPS to `mipad-linux` and back; the laptop is no longer the standby per ADR-043) before declaring the topology settled (spec Phase 4 step 4).
 
 ### 5.3 DO note
 
 Stopping the gateway does not affect DO sessions; only the relay target changes. DO has no inbound connections and holds no authority.
 
-### 5.4 Failover drill checklist (both directions: VPS to laptop and back)
+### 5.4 Failover drill checklist (both directions: VPS to `mipad-linux` and back)
 
 - [ ] Active host tree committed and pushed.
 - [ ] Standby pulled and `host_check.py` READY.
@@ -147,7 +158,7 @@ Snapshot 2026-09-23: `SUMMARY: 5 PASS, 1 WARN, 0 FAIL`, `RESULT: READY (with war
 ## 8. References
 
 - `internal-docs/specs/2026-09-22-agent-subagent-architecture.md`, Sections 4 and 10.
-- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-029.
+- `internal-docs/DECISION_LOG.md`, ADR-011 through ADR-029, ADR-043.
 - `internal-docs/research/2026-09-23-do-managed-agents-phase4.md`.
 - `internal-docs/relay/README.md`.
 - `internal-docs/relay/M2_DISPATCH_RUNBOOK.md` (M2, Proposed - pending).

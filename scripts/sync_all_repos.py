@@ -35,7 +35,7 @@ def run_git(repo_path, args):
             check=True
         )
         return res.stdout.strip()
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, OSError):
         return None
 
 def audit_projects(fetch=False, strict=False):
@@ -76,20 +76,23 @@ def audit_projects(fetch=False, strict=False):
     all_clean = True
 
     for name, path in sorted(repos):
+        probe_failed = False
         if fetch:
             print(f"🔄 Fetching {name}...")
-            run_git(path, ["fetch", "--quiet"])
+            probe_failed = run_git(path, ["fetch", "--quiet"]) is None
 
-        branch = run_git(path, ["branch", "--show-current"]) or "detached"
+        branch_result = run_git(path, ["branch", "--show-current"])
+        branch = branch_result or "detached"
         status = run_git(path, ["status", "--short"])
         is_dirty = bool(status)
+        probe_failed = probe_failed or status is None or branch_result is None
 
         # Ahead/behind check
         ahead_behind = ""
         tracking = run_git(path, ["rev-parse", "--abbrev-ref", "@{upstream}"])
         if tracking:
             count = run_git(path, ["rev-list", "--left-right", "--count", f"{tracking}...HEAD"])
-            if count:
+            if count and re.fullmatch(r"\d+\s+\d+", count):
                 behind, ahead = count.split()
                 flags = []
                 if int(ahead) > 0:
@@ -98,11 +101,13 @@ def audit_projects(fetch=False, strict=False):
                     flags.append(f"↓{behind} unpulled")
                 if flags:
                     ahead_behind = f" ({', '.join(flags)})"
+            else:
+                probe_failed = True
         else:
             ahead_behind = " (no remote tracking)"
 
-        state_icon = "⚠️ DIRTY" if is_dirty else "✅ CLEAN"
-        if is_dirty or "unpushed" in ahead_behind:
+        state_icon = "❌ CHECK FAILED" if probe_failed else ("⚠️ DIRTY" if is_dirty else "✅ CLEAN")
+        if probe_failed or is_dirty or "unpushed" in ahead_behind or "unpulled" in ahead_behind:
             all_clean = False
 
         print(f"\n📦 {name}")
@@ -119,7 +124,7 @@ def audit_projects(fetch=False, strict=False):
     if all_clean:
         print("🎉 ALL REPOSITORIES IN SYNC & CLEAN")
     else:
-        print("⚠️ SOME REPOSITORIES REQUIRE ATTENTION (UNCOMMITTED CHANGES OR UNPUSHED COMMITS)")
+        print("⚠️ SOME REPOSITORIES REQUIRE ATTENTION (UNCOMMITTED CHANGES, DIVERGENCE, OR FAILED CHECKS)")
     print("-" * 75)
     return 0 if all_clean else (1 if strict else 0)
 

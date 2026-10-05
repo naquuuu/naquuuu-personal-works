@@ -1,5 +1,4 @@
 """Synthetic identities only. No live state or network."""
-import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -18,16 +17,14 @@ class PolicyTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.env = self.root / '.env'
-        self.env.write_text(f'{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\nSECRET=canary-private-token\n')
+        self.env.write_text(f'NAQUUUU_WA_OWNER_IDS={OWNER}\n{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\nSECRET=canary-private-token\n')
         self.policy = ChatPolicy(self.env, self.root / 'names.json')
-        self.patcher = patch.dict(os.environ, {'NAQUUUU_WA_OWNER_IDS': OWNER}, clear=False)
-        self.patcher.start()
-        self.addCleanup(self.patcher.stop)
         self.addCleanup(self.tmp.cleanup)
 
     def event(self, body, owner=True, reply=False):
         return dict(body=body, senderId=OWNER if owner else GUEST, isGroup=True, chatId=GROUP,
-                    hasQuotedMessage=reply, quotedMessageId='synthetic-message' if reply else '', quotedParticipant=PERSON)
+                    messageId=body + '-current-id', hasQuotedMessage=reply,
+                    quotedMessageId='synthetic-message' if reply else '', quotedParticipant=PERSON)
 
     def test_guest_matrix_no_mutation(self):
         before = self.env.read_bytes()
@@ -92,8 +89,8 @@ class PolicyTests(unittest.TestCase):
             self.policy.outbound({'chatId': GROUP, 'message': 'Hello', 'mentions': [GUEST+'@lid']})
 
     def test_no_owner_config_denies(self):
-        with patch.dict(os.environ, {'NAQUUUU_WA_OWNER_IDS': ''}):
-            self.assertEqual(self.policy.intercept(self.event('/list')), 'Only the owner can change access.')
+        self.env.write_text(f'{GROUPS}={GROUP}\n{PEOPLE}={OWNER}\n{PROMOTED}={GROUP}\n')
+        self.assertEqual(self.policy.intercept(self.event('/list')), 'Only the owner can change access.')
 
     def test_bridge_owner_alias_authenticates_lid_sender(self):
         event = self.event('/list', owner=False)
@@ -154,6 +151,56 @@ class PolicyTests(unittest.TestCase):
         )
         res = self.policy.outbound({'chatId': GROUP, 'message': looped})
         self.assertEqual(res['message'], SAFE_FALLBACK_REPLY)
+
+    def test_requested_creative_repetition_is_scoped_to_observed_turn(self):
+        art = 'Draw a small ASCII art cat'
+        event = self.event(art)
+        self.policy.observe(event)
+        repeated_art = '```text\n /\\_/\\\n*---- (oo) ----*\n > ^ <\n*---- (oo) ----*\n*---- (oo) ----*\n```'
+        result = self.policy.outbound({'chatId': GROUP, 'replyTo': event['messageId'], 'message': repeated_art})
+        self.assertEqual(result['message'], repeated_art)
+
+        # A quote alone cannot issue the permission; the live message must refer back.
+        unrelated = self.event('Hello', reply=True) | {'quotedText': art}
+        self.policy.observe(unrelated)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': unrelated['messageId'], 'message': repeated_art})['message'], SAFE_FALLBACK_REPLY)
+
+        followup = self.event('Do that', reply=True) | {'quotedText': art}
+        self.policy.observe(followup)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': followup['messageId'], 'message': repeated_art})['message'], repeated_art)
+
+        # A new greeting cannot reuse the preceding request even if replyTo is forged stale.
+        greeting = self.event('Hi')
+        self.policy.observe(greeting)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': greeting['messageId'], 'message': repeated_art})['message'], SAFE_FALLBACK_REPLY)
+
+    def test_screenshot_indonesian_art_request_and_referential_quote(self):
+        direct = self.event('berikan 100 kata sayang ke ai melalui asci text art')
+        self.policy.observe(direct)
+        hundred = '```text\n' + ' '.join(['sayang'] * 100) + '\n```'
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': direct['messageId'], 'message': hundred})['message'], hundred)
+
+        quoted = self.event('@naquuuubot ini', reply=True) | {'quotedText': 'berikan 100 kata sayang ke ai melalui asci text art'}
+        self.policy.observe(quoted)
+        ten = 'sayang ' * 10
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': quoted['messageId'], 'message': ten})['message'], ten)
+
+        counted_followup = self.event('10 kata sayang deh untuk ayi sayang', reply=True) | {'quotedText': 'ini'}
+        self.policy.observe(counted_followup)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': counted_followup['messageId'], 'message': ten})['message'], ten)
+
+        # Only the known textual bot mention is stripped for referral matching.
+        id_mention = self.event('@10000001 ini', reply=True) | {'quotedText': 'berikan 100 kata sayang ke ai melalui asci text art'}
+        self.policy.observe(id_mention)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': id_mention['messageId'], 'message': ten})['message'], SAFE_FALLBACK_REPLY)
+
+    def test_requested_affection_is_bounded_and_does_not_allow_drafts(self):
+        request = self.event('Say "I love you" 5 times')
+        self.policy.observe(request)
+        repeated = 'I love you. I love you. I love you. I love you. I love you.'
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': repeated})['message'], repeated)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': repeated + ' I love you.'})['message'], SAFE_FALLBACK_REPLY)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': '<think>Draft</think> ' + repeated})['message'], SAFE_FALLBACK_REPLY)
 
     def test_indonesian_slang_and_factual_bot_response_allowed(self):
         valid_response = 'Nggak, gue bot—nggak punya tubuh atau pengalaman begitu.'

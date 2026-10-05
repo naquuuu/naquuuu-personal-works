@@ -12,13 +12,9 @@ Why this gate exists:
     other tool on the relay host is not. This gate is therefore the ONLY
     reliable boundary between "a guest can talk" and "a guest can act".
 
-How the persona must use it:
-    Before `opencode run`, before any skill install, and before any other tool
-    execution, the model calls this gate with the current sender id and obeys
-    the verdict verbatim:
-        exit 0 = ALLOW  -> the owner asked; proceed with the tool call
-        exit 3 = DENY   -> a guest; reply in chat only, run nothing
-    There is no third answer, and no path that treats a DENY as negotiable.
+Host integration:
+    The gateway uses this evaluator with a bridge-provided sender identity.
+    A model must never supply a sender identity or invoke this CLI as a gate.
 
 Fail-closed by design:
     - No owner list configured (variable absent, empty, or a wildcard such as
@@ -45,8 +41,8 @@ Strict sender-id shape:
     `@s.whatsapp.net` / `@lid` suffix.
 
 Owner ids are Tier 1:
-    They are read only from the host environment variable
-    NAQUUUU_WA_OWNER_IDS (comma-separated) and never live in this repository,
+    They are read only from the host's private <hermes-home>/.env file,
+    variable NAQUUUU_WA_OWNER_IDS (comma-separated), and never live in this repository,
     in code, in docs, or in any prompt (AGENTS.md Model-Input Boundary). No
     real phone number, sender id, or owner id is written anywhere in this
     file, including comments and examples. This script never prints the sender
@@ -56,11 +52,10 @@ Owner ids are Tier 1:
 Usage:
     python3 scripts/wa_owner_gate.py --sender <sender-id>
     python3 scripts/wa_owner_gate.py --sender <sender-id> --json
-    python3 scripts/wa_owner_gate.py --hermes-home <path>   # accepted, inert
+    python3 scripts/wa_owner_gate.py --hermes-home <path>
 
-`--hermes-home` is accepted for interface symmetry with the other relay
-helpers; the owner list comes from the process environment only, so it does
-not affect the verdict.
+`--hermes-home` selects the private configuration directory. Otherwise
+HERMES_HOME or ~/.hermes is used. Missing or unreadable configuration denies.
 
 Exit codes: 0 = ALLOW (the sender is an owner); 3 = DENY (malformed sender,
 sender is not an owner, or no owner list configured); 2 = argparse usage error
@@ -73,6 +68,7 @@ import argparse
 import io
 import json
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -101,9 +97,26 @@ def digits_only(raw: str) -> str:
     return DIGITS_RE.sub("", (raw or "").strip())
 
 
-def owner_digits() -> set[str] | None:
+def owner_value(hermes_home: str | Path | None = None) -> str | None:
+    """Read the single private configuration source used by bridge and helper."""
+    try:
+        fallback_home = os.environ.get("USERPROFILE") if os.name == "nt" else None
+        fallback_home = fallback_home or Path.home()
+        home = Path(hermes_home) if hermes_home is not None else Path(
+            os.environ.get("HERMES_HOME") or (Path(fallback_home) / ".hermes")
+        )
+        for line in (home / ".env").read_text(encoding="utf-8").splitlines():
+            match = re.match(r"^\s*(?:export\s+)?" + OWNER_ENV + r"\s*=\s*(.*)$", line)
+            if match:
+                return match.group(1).strip().strip("\"'")
+    except (OSError, UnicodeError, RuntimeError, ValueError):
+        return None
+    return None
+
+
+def owner_digits(hermes_home: str | Path | None = None) -> set[str] | None:
     """Digit form of the configured owners; None when unusable (fail closed)."""
-    raw = os.environ.get(OWNER_ENV)
+    raw = owner_value(hermes_home)
     if raw is None:
         return None
     entries = [part.strip() for part in raw.split(",") if part.strip()]
@@ -117,11 +130,11 @@ def owner_digits() -> set[str] | None:
     return owners or None
 
 
-def evaluate(sender: str) -> tuple[bool, str]:
+def evaluate(sender: str, hermes_home: str | Path | None = None) -> tuple[bool, str]:
     """(allow, reason). Shape check first, so a non-id is never compared."""
     if not is_sender_id(sender):
         return False, DENY_BAD_SENDER
-    owners = owner_digits()
+    owners = owner_digits(hermes_home)
     if owners is None:
         return False, DENY_NO_CONFIG
     if digits_only(sender) in owners:
@@ -156,16 +169,14 @@ def main() -> int:
     parser.add_argument(
         "--hermes-home",
         default=None,
-        help="accepted for interface symmetry; the owner list comes from the host env only",
+        help="Hermes home whose private .env contains NAQUUUU_WA_OWNER_IDS",
     )
     parser.add_argument(
         "--json", action="store_true", help="print the verdict as JSON (no identifiers)"
     )
     args = parser.parse_args()
 
-    # The verdict below reads the host environment only; --hermes-home is
-    # accepted for interface parity and deliberately has no effect on it.
-    allow, reason = evaluate(args.sender)
+    allow, reason = evaluate(args.sender, args.hermes_home)
     return emit(allow, reason, args.json)
 
 

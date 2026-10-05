@@ -1,0 +1,40 @@
+{
+  "name": "naquuuu-light",
+  "label": "naquuuu / light",
+  "description": "Warm paper and crimson. Hermes workspace theme.",
+  "palette": {
+    "background": {
+      "hex": "#FBFBFA",
+      "alpha": 1
+    },
+    "midground": {
+      "hex": "#111110",
+      "alpha": 1
+    },
+    "foreground": {
+      "hex": "#DC2626",
+      "alpha": 0
+    },
+    "noiseOpacity": 0
+  },
+  "typography": {
+    "fontSans": "\"Plus Jakarta Sans\", system-ui, sans-serif",
+    "fontMono": "\"JetBrains Mono\", ui-monospace, monospace",
+    "baseSize": "15px",
+    "lineHeight": "1.55",
+    "letterSpacing": "0"
+  },
+  "layout": {
+    "radius": "0.5rem",
+    "density": "comfortable"
+  },
+  "colorOverrides": {
+    "card": "#FFFFFF",
+    "cardForeground": "#111110",
+    "mutedForeground": "#555550",
+    "border": "#E5E5DF",
+    "primary": "#DC2626",
+    "primaryForeground": "#FFFFFF"
+  },
+  "customCSS": ":root {--color-background:#FBFBFA !important;--color-foreground:#111110 !important;--color-card:#FFFFFF !important;--color-card-foreground:#111110 !important;--color-popover:#F2F2ED !important;--color-popover-foreground:#111110 !important;--color-primary:#DC2626 !important;--color-primary-foreground:#FFFFFF !important;--color-secondary:#F2F2ED !important;--color-secondary-foreground:#111110 !important;--color-muted:#F2F2ED !important;--color-muted-foreground:#555550 !important;--color-accent:#F2F2ED !important;--color-accent-foreground:#111110 !important;--color-border:#E5E5DF !important;--color-input:#E5E5DF !important;--color-ring:#DC2626 !important;--color-destructive:#DC2626 !important;--color-text-primary:#111110 !important;--color-text-secondary:#555550 !important;--color-text-tertiary:#555550 !important;color-scheme:light;} body {font-family:var(--theme-font-sans);}"
+}

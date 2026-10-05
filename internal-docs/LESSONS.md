@@ -1,5 +1,5 @@
 # Lessons (curated)
-<!-- verified-against: ADR-040 -->
+<!-- verified-against: ADR-043 -->
 
 Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything. Route through `internal-docs/INDEX.md` first; this file is the hot slice, not the archive.
 
@@ -22,6 +22,12 @@ L-26. Blank screenshots of scrolled regions in the browser pane are a tooling ar
 L-27. Blog visual work runs curator-in-the-loop with strict roles (2026-09-30). Owner rule: every part involves `naquuuu-curator`, and each subagent stays in its role: curator reviews taste, builder edits, skeptic challenges, verifier gates, scribe documents. Owner taste rejections from this pass ("too gimmicky" proof strip, "too ai" glowing toggle, frosted pills) are canon in `STYLE_BIBLE.md` 2.9; flowchart shape and legend rules are in 2.8.
 
 L-28. Every dedicated blog detail page carries a red ai note (2026-09-30). Owner rule: pages written by ai must say so where visitors notice it at once, so the `.ai-note` aside is crimson on purpose, overriding the earlier muted grey spec. Any new dedicated page (essay, note, experience or competition page) adds the aside as the last child of its header, keeps it red, and uses the wording "post" on essays and notes, "page" on experience and competition pages; copy in `STYLE_BIBLE.md` 4.7.
+
+L-29. ADR-041 (2026-09-30): route routine implementation/checks to configured lower-cost specialists; keep architecture, privacy/security, review, and integration with the orchestrator, escalating for risk or uncertainty. Cost never relaxes the Tier 1/Hermes-state boundary; configuration is not latency evidence.
+
+L-30. ADR-043 (proposed 2026-10-02) removes laptop relay/standby duties. `mipad-linux` becomes standby only after disabled-Hermes setup, verified session transfer, phone-to-VPS kill-switch checks, Linux readiness, and a two-way drill; this is not yet implemented.
+
+L-31. The 2026-10-05 guard supports ordinary bounded requested text art and filters unaddressed group-idle events; `NO_REPLY` is for group idle/acks, never direct substantive questions. Tests and canaries passed; no real phone/group turn was verified (`2026-10-05-TEXT_ART_LOOP_FIX.md`).
 
 ## Open questions
 

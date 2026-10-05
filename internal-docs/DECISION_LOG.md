@@ -593,6 +593,12 @@ This log records major technical and structural decisions made across personal p
 - **Evidence boundary**: Synthetic command tests, retry tests and live service settings do not prove phone delivery, accurate photo interpretation, proactive mentions, or worker activation. These remain separate checks in `ASTRA_EXECUTION_REPORT.md`.
 - **Knowledge maintenance**: The owner authorized the first compaction: L-01 through L-19 moved to `lessons/2026-09.md`, preserving IDs and the historical L-13 reference. Add `/agent-viz` to session-end checks, using `--serve` without `--out` for private viewing and publishing only sanitized explicit exports.
 
+### ADR-034 implementation correction (2026-10-05)
+
+- WhatsApp group silence now remains silent across normal, queued and crash-recovery delivery; the upstream conversion of `NO_REPLY` into a visible error caused the observed acknowledgement loop. Unaddressed idle/status acknowledgements are dropped before policy observation and model dispatch; explicit mentions and substantive follow-ups still pass normal admission gates. DM and other platforms retain their existing silence rules.
+- Requested text art and affectionate repetition are conversational text. The host recognizes explicit current requests and referential quotes, grants at most 100 repeats within 3,600 characters for the matching inbound message/reply, and retains drafting, leak and identity guards. Workflow/architecture diagrams still use Mermaid under AGENTS.md.
+- Deployed through an external helper overlay and backed-up Hermes source hooks; no public-repo commit or push. The updated `relay_run.py` remains local until its separate runtime promotion. 49 regressions and synthetic send/poll/canary checks passed; gateway active and bridge connected after one restart. A real phone replay remains unverified. Receipt and rollback: `relay/2026-10-05-TEXT_ART_LOOP_FIX.md`.
+
 ## ADR-035: Blog Type System (Plus Jakarta Sans UI + Headings, Open Sans Reading Text)
 - **Date**: 2026-09-29
 - **Status**: Accepted (owner request). Supersedes the typography line of the earlier design-token decision (Space Grotesk display + Open Sans body).
@@ -625,3 +631,37 @@ This log records major technical and structural decisions made across personal p
 - **Date**: 2026-09-30
 - **Status**: Accepted (owner request).
 - **Decision**: Count visits with GoatCounter (`naquuuu.goatcounter.com`), no cookies and no personal data stored, instead of logging IP addresses (IPs are personal data under UU PDP 27/2022). Every published page carries the tag; each footer states "visits are counted with goatcounter: no cookies, no personal info tracked" with a link to goatcounter.com. The homepage footer shows the public total from `/counter/TOTAL.json` (enabled by the owner) and hides itself when the count is zero or the endpoint fails.
+
+## ADR-040: Tailnet-Only Hermes Dashboard
+- **Date**: 2026-09-30
+- **Status**: Accepted (owner request; tailnet route active, device checks pending).
+- **Context**: The owner wants remote dashboard access while keeping the Hermes listener off the public network. The dashboard was not running at preflight; Tailscale was connected and Serve had no route configured.
+- **Decision**: Hermes Dashboard listens only on `127.0.0.1:9119`; Tailscale Serve provides the HTTPS tailnet route. Hermes built-in Basic Auth is required with a user-entered password, stored as a plugin-generated hash and stable random signing secret in the mode-0600 Hermes `.env`. Set `dashboard.public_url` to the exact Tailscale HTTPS hostname so Hermes validates Host/Origin and enforces auth. Keep Funnel, public firewall rules, public reverse proxies, and Host/Origin rewrites out of the design.
+- **Rollout status (2026-09-30)**: Owner entered the dashboard credentials directly into the interactive VPS script. The loopback-only dashboard user service is enabled and active. Local and HTTPS-over-tailnet checks returned `/api/status` with `auth_required: true` and unauthenticated `/api/config` with HTTP 401. `https://hermes-vps.tail317e88.ts.net/` is routed through Tailscale Serve to `127.0.0.1:9119`; UFW has no 9119 rule and Funnel is not configured.
+- **Open**: Verify dashboard login from the owner's laptop/phone and confirm an off-tailnet device cannot reach the dashboard. No password or auth material belongs in this repository or a model context.
+
+## ADR-041: Cost-Aware Agent Model Routing
+- **Date**: 2026-09-30
+- **Status**: Accepted (owner request).
+- **Decision**: Delegate routine code implementation and deterministic gate execution to lower-cost specialist agents. Codex orchestration prefers `gpt-6-luna`; OpenCode pins `naquuuu-builder` and `naquuuu-verifier` to the existing workspace small model, `opencode-go/deepseek-v4-flash`. Keep the orchestrator responsible for task breakdown, unclear requirements, security/privacy choices, architecture, review, and integration; escalate when evidence or task risk warrants a more capable model.
+- **Boundary**: Model cost does not change data classification. Tier 1 secrets, credentials, identifiers, and Hermes state remain out of every model context. Parallelize only independent work; serialize writers for overlapping files.
+- **Configuration**: Per-agent model overrides are in `opencode.jsonc`; keep them aligned with the top-level `small_model`. OpenCode documentation says a configured agent model overrides the caller's model for that agent ([Agents docs](https://opencode.ai/docs/agents)).
+
+## ADR-042: AI Authorship Disclosure on Every Dedicated Blog Page
+- **Date**: 2026-09-30
+- **Status**: Accepted (owner rule).
+- **Decision**: Every dedicated detail page on the blog is written by AI and must say so. The four essays, the relay recovery note, the work experience hub, the MAPCLUB, Traveloka and BCG case studies, and the 3M and Schneider competition pages carry an `.ai-note` aside as the last child of the page header: "ai note: this post was written by ai and might be wrong. check anything important and double check it with the blog owner before you rely on it." The wording is "page" instead of "post" on experience and competition pages. The note is red on purpose (crimson tokens, 4px left border), overriding the curator's first muted-grey spec, so visitors notice it immediately. It is not shown on the homepage, the essay list, the session map or the CV.
+- **Enforcement**: `blog/scripts/new_essay.py` emits the aside for new essays; new dedicated pages must add it by hand. Recorded as L-28 and STYLE_BIBLE 2.9 (sanctioned red exception) and 4.7 (copy).
+- **Consequences**: Reviewers must not quiet, shrink, recolor or move the note. Commits f5aec23, 9470b9f and the red restyle.
+
+## ADR-043: Relay Standby Moves Off the Employer-Managed Laptop
+- **Date**: 2026-10-02
+- **Status**: Proposed (owner request; owner-run steps pending).
+- **Context**: The laptop is entering employer device management from 2026-10-08: automatic screen lock, full disk encryption with centrally escrowed recovery keys, application inventory with possible blocking, and a browser extension allowlist. The VPS relay (ADR-026) does not depend on the laptop, but the laptop still held the WhatsApp rollback session copy and was the named standby in the failover drill (HOSTS.md 5.2, 5.4). Escrowed disk keys put Tier 1 material on the laptop (hub `.env`, the WhatsApp session) within reach of a third party, and Tailscale, OpenSSH or RDP may be restricted.
+- **Decision**: `mipad-linux` becomes the relay standby and holds the only WhatsApp rollback session copy; the laptop copy is deleted after the transfer is verified. The laptop stays a workstation/co-writer with no relay role, and no relay operation (kill switch, status, failover) may depend on it. The phone's Tailscale SSH to the VPS is the primary kill switch path.
+- **Consequences**: HOSTS.md updated (topology, host table, 4.1, 4.3, new 4.4, 5.2, 5.4). `host_check.py` needs Linux Hermes paths before it can gate `mipad-linux`. The hub `.env` remains on the laptop and is in scope of the escrowed key; whether the hub itself stays on this laptop is an open owner decision.
+- **Open**: Install Hermes on `mipad-linux` (gateway disabled); move the session copy and delete the laptop copy; verify phone-to-VPS SSH and `hermes gateway stop`; Linux support in `host_check.py`; run the drill both ways.
+
+### 2026-10-05 Hermes dashboard implementation correction (ADR-040)
+
+Owner requested that agent activity belong to the existing Hermes dashboard, with shorter copy and the naquuuu blog light/dark palette. Implemented as a native dashboard plugin at `/agents`, using the existing authenticated API and navigation. The new endpoint allowlists aggregate role, state, task/tool/file/error counts; it excludes session IDs, paths, commands, and task or conversation content. Two versioned custom themes use the current blog colors; blog content/layout is not copied or modified. Dashboard-only restart confirmed the gateway stayed active, plugin discovery, two themes, static asset 200, and unauthenticated activity API 401. Synthetic canary checks and eight viewport/mode checks passed; authenticated owner-device navigation remains unverified. See `relay/2026-10-05-HERMES_ACTIVITY_INTEGRATION.md`.
