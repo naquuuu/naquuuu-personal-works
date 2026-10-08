@@ -34,6 +34,15 @@ def opencode_binary() -> str:
     return shutil.which('opencode') or str(installed)
 
 
+def relay_timeout() -> int:
+    """Client-side wait budget. Default stays at the previous 120s floor."""
+    try:
+        value = int(os.environ.get('NAQUUUU_RELAY_TIMEOUT', ''))
+    except ValueError:
+        return 120
+    return value if value > 0 else 120
+
+
 def image_attachment(value: str) -> str:
     """Only regular image files inside host-controlled attachment cache roots."""
     hermes = Path(os.environ.get('HERMES_HOME', str(Path.home() / '.hermes')))
@@ -128,7 +137,7 @@ def main() -> int:
     try:
         result = subprocess.run(command, cwd=root, env=env, text=True,
                                 encoding='utf-8', errors='replace',
-                                capture_output=True, timeout=120)
+                                capture_output=True, timeout=relay_timeout())
     except subprocess.TimeoutExpired:
         print('Batas waktu tercapai; hasilnya belum pasti, jadi tugas tidak diulang.')
         return 1
