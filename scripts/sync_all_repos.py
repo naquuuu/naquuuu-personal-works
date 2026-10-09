@@ -257,5 +257,11 @@ if __name__ == "__main__":
     if args.check_freshness or args.strict:
         if not audit_freshness(strict=args.strict) and args.strict:
             exit_code = 1
+    if args.strict:
+        # ADR-044: model pins and the corporate-skill deny must match the decision log.
+        print("\n--- Model routing (ADR-044) ---")
+        routing = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "verify_model_routing.py")])
+        if routing.returncode != 0:
+            exit_code = 1
 
     sys.exit(exit_code)

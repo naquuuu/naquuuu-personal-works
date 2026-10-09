@@ -7,6 +7,8 @@ The v2 skill also answers questions: for status, plan, or history questions it r
 
 Flow: WhatsApp -> Hermes (skill: opencode-relay) -> `opencode run "<task>"` -> naquuuubot -> reply.
 
+Which system handles what (Hermes vs OpenCode), tool ownership, and the monthly usage check: [ROUTING_SOP.md](ROUTING_SOP.md) (ADR-044).
+
 ## Install path
 The live skill is installed at:
 `%LOCALAPPDATA%\hermes\skills\relay\opencode-relay\SKILL.md`

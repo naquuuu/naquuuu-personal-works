@@ -340,7 +340,7 @@ def agent_index(roster: list[Agent]) -> dict[str, Agent]:
 
 
 def resolve_session_file(root: Path, session: str | None) -> Path:
-    """Pick the named session file, or the most recently modified one."""
+    """Pick the named session file, or the most recent one with tool activity."""
     data_dir = root / DATA_DIRNAME
     if not data_dir.is_dir():
         raise FileNotFoundError(f"no telemetry directory at {data_dir}. run an opencode session first.")
@@ -352,6 +352,10 @@ def resolve_session_file(root: Path, session: str | None) -> Path:
     files = sorted(data_dir.glob("*.jsonl"), key=lambda item: item.stat().st_mtime)
     if not files:
         raise FileNotFoundError(f"no telemetry files in {data_dir}")
+    # Trivial one-shot runs (a reply, no tools) render an empty map; skip them.
+    for path in reversed(files):
+        if any(record.get("type") == "tool" for record in load_records(path)):
+            return path
     return files[-1]
 
 

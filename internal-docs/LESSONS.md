@@ -1,5 +1,5 @@
 # Lessons (curated)
-<!-- verified-against: ADR-043 -->
+<!-- verified-against: ADR-044 -->
 
 Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything. Route through `internal-docs/INDEX.md` first; this file is the hot slice, not the archive.
 

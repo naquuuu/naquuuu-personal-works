@@ -107,7 +107,7 @@ All other agents are hidden subagents that never communicate with the user.
 ### Cost-Aware Model Routing
 
 - Delegate routine implementation, mechanical refactors, documentation mechanics, and deterministic gate/test execution to the relevant specialist using a lower-cost model. In Codex orchestration, prefer `gpt-6-luna`; if unavailable, use the configured small/flash model.
-- In OpenCode, `naquuuu-builder` and `naquuuu-verifier` are pinned to the workspace's existing small model (`opencode-go/deepseek-v4-flash`) in `opencode.jsonc`. Keep those overrides aligned with `small_model` when either value changes.
+- In OpenCode, each agent is pinned per role in `opencode.jsonc` (ADR-044, all `opencode-go`, all prices under $1/1M): orchestrator and builder `deepseek-v4.1-flash` (also `small_model`), skeptic `glm-5.3-flash`, verifier `deepseek-v4-flash`, librarian `muse-spark-1.3-contributor`, curator and scribe `qwen3.8-flash`. Change routing only via a new ADR.
 - The orchestrator owns task decomposition, ambiguous requirements, architecture and security/privacy decisions, review of agent evidence, and final integration. Escalate to a more capable model when the low-cost agent cannot resolve uncertainty or when the change has high impact.
 - Never route Tier 1 material or Hermes state to any agent or model. Model choice does not relax the Model-Input Boundary in Section 3.
 - Delegate independently bounded work in parallel when tasks do not write overlapping files. Writers serialize per file; deterministic verification may run in parallel only after its inputs are stable.
