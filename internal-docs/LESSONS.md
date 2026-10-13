@@ -37,6 +37,8 @@ L-34. Hash-verify every remote write script before its first live use (2026-10-1
 
 L-35. Live feedback beats the earlier spec (2026-10-14). The ~20-sentence ceiling counted newlines and blocked legitimate warm replies (470 to 2270 characters with fallback spam); it now counts sentence enders only with a runaway cap of 60, and long answers ride the chat's bubble split. Em dashes are normalized deterministically at the boundary, bot-to-bot chat is allowed with a 20-reply/5-minute per-chat burst breaker (quiet 10-minute cooldown), and group context memory shipped per ADR-048. Receipt: `relay/2026-10-14-GROUP_MEMORY_AND_TUNING.md`.
 
+L-36. Restart churn breaks bridge sends (2026-10-14). Seven gateway restarts in one hour produced connection churn at the bridge ("connection closed / stream errored") and two replies failed with "Delivery uncertain" as silent losses (no replay by design). Batch deploy restarts, keep them to at most two per hour while the relay is in use, and after a send-failure stretch verify with one live reply before assuming recovery. Record: `relay/2026-10-14-GROUP_MEMORY_AND_TUNING.md` post-deploy incident.
+
 ## Open questions
 
 1. Compaction completed 2026-09-28 under ASTRA_ONESHOT authorization; L-01 through L-19 moved with stable IDs and L-13 remains resolvable in the archive.

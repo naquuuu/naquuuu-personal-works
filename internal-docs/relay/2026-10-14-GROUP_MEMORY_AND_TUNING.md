@@ -22,6 +22,10 @@ Bounded group context memory shipped and live-tested, plus the relay tuning fixe
 3. **Warmth persona**: curator-reviewed basa-basi rule for the people around the owner (guest-first, one warm line, graceful feedback handling), the length/bubble wording aligned with the guard, and a guest-header carve on the 1 to 3 sentence rule.
 4. **Bot-to-bot**: now allowed in any language, with an explicit no-endless-loop rule and a deterministic breaker: more than 20 replies by the bot to one chat inside 5 minutes pauses that chat quietly for 10 minutes (`reply_burst` / `reply_burst_suppressed` counts-only logs).
 
+## Post-deploy incident (2026-10-14, 00:35 to 00:39)
+
+Two replies failed to deliver at 00:35:20 and 00:36:20 with "Delivery uncertain; automatic replay stopped"; the bridge log shows 12 connection churn events ("connection closed / stream errored") in that stretch, with no session conflict and no rate-limit indicator. Cause: reconnection churn from the night's deploy restarts (roughly seven gateway restarts in one hour). The no-replay guard kept the failure from duplicating, so the user saw silence. A final restart at 00:38:47 re-established the connection; from 00:39 onward: zero send failures, bridge connected, owner-verified reply. Operational rule for the next session: batch deploys into one restart; do not restart more than twice in an hour while the relay is in use. Recorded as `L-36`.
+
 ## Verification
 
 - Local: 128 tests OK, relay eval 10/10, sanitization passes, agent parity OK, digest freshness OK.
