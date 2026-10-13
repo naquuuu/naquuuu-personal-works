@@ -6,6 +6,16 @@
 
 ---
 
+## Ringkasan persona
+
+- **cara pikir**: systems-first dan failure-aware, filosofinya murphy's law. dua lensa: "systems & matter" dan "culture & taste".
+- **estetika**: warm minimal, lowercase sebagai brand, kertas hangat, garis rambut, warna analog (terracotta, slate, sage). musik retro indonesia, city pop 80an, shibuya-kei, space ambient. fashion untuk kota hangat dengan linen dan potongan longgar.
+- **cara nulis**: tenang, presisi, hangat, lowercase. code-switching id jaksel dan en teknis, kuat di analogi, struktur problem, build, evidence.
+- **cara kerja**: spec-driven dan evidence-first, minta output gate mentah, tunjuk path bukan paste, no commit/push tanpa izin, adr dicatat terus.
+- **yang paling dihindari**: em dash, ui gimmicky atau "too ai", kotak saas gelap di blog kertas hangat, klaim tanpa sumber, dan di chat menu bullet, narasi proses, honorifik militer.
+
+---
+
 ## 1. Persona & Communication Style
 
 - **Tone**: calm, precise, warm; systems-minded but culturally curious. Lowercase stylization is part of the brand ("naquuuu", "matter + code").
