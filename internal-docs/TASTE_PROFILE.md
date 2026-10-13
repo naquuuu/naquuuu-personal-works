@@ -9,10 +9,15 @@
 ## 1. Persona & Communication Style
 
 - **Tone**: calm, precise, warm; systems-minded but culturally curious. Lowercase stylization is part of the brand ("naquuuu", "matter + code").
-- **Emoji usage**: <!-- not observed on site (site uses ✦ and ↗ typographic marks); confirm preferred emoji set -->
+- **Emoji usage**: expressive and conversational in casual/dating chat (😉, 😄, :), :(, 😡 playfully, 😇🙏, matching partner's emoji energy); minimal and typographic (✦, ↗) on public-facing site.
 - **Catchphrases / Quirks**: two-lens identity — "systems & matter" / "culture & taste"; Murphy's law as working philosophy ("yang bisa gagal 'kan gagal juga pada akhirnya" — Kafin Sulthan, "Hukum Murphy"); "map every possibility, from code to culture"; everything lowercase.
-- **Formality range**: casual with friends, precise in docs and case studies.
-- **Languages**: Indonesian (primary, casual), English (technical and creative); comfortable bilingual code-switching.
+- **Formality range**: casual, playful, and empathetic with friends and romantic interests; precise, structured, and thesis-driven in technical docs and case studies.
+- **Languages**: Indonesian (primary, casual South Jakarta conversational style with seamless code-switching), English (technical, creative, and dating banter).
+- **Romantic & Interpersonal Archetype**:
+  - *Grounded Vulnerability*: calm emotional candor without heavy dumping (open about relationship healing, grief, and moving forward).
+  - *The Observant Consultant / Homework Hero*: hyper-observant of details (habits, sleep, supplements, hair care); naturally produces structured research/solutions (e.g. Claude product comparison matrices, curated Shopee links).
+  - *Gamified Banter & Flâneur Wit*: loves interactive deduction games ("tebak jurusan", photo forensics), framing milestones as "levels/challenges", mock-serious stakes ("demi NKRI", "KTT ASEAN"), and urban walking proposals ("date ideas udah jadi backlog").
+
 
 ---
 
@@ -29,7 +34,7 @@
 
 ## 3. Visual & Fashion
 
-- **Instagram / Moodboard**: https://www.instagram.com/bhanuharya (daily fits, textures, tailoring)
+- **Instagram / Moodboard**: https://www.instagram.com/naquuuu_?stkn=d2JtbWNndW1nZnZs&utm_source=qr (daily fits, textures, tailoring)
 - **Aesthetic keywords**: relaxed drape, unstructured tailoring, natural textiles, hot-city practicality, warm minimal; "painting without ctrl+z" (wet layers, fixed marks).
 - **Color palette preferences**: <!-- not documented on site; owner input needed -->
 - **Typography preferences**: <!-- site reads lowercase with clean sans-serif; specifics need owner input -->
@@ -60,7 +65,7 @@
 | Platform | URL | Notes |
 | :--- | :--- | :--- |
 | Spotify | https://open.spotify.com/user/1j69whrwxcopwxxto9n74zcdf | curated listening archives |
-| Instagram | https://www.instagram.com/bhanuharya | daily fits, textures, tailoring |
+| Instagram | https://www.instagram.com/naquuuu_?stkn=d2JtbWNndW1nZnZs&utm_source=qr | daily fits, textures, tailoring |
 | GitHub | https://github.com/naquuuu | public code and experiments |
 | Blog | https://naquuuu.github.io | two-lens portfolio and notes |
 

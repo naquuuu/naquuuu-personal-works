@@ -35,6 +35,9 @@ vertex-key.json
 # 3c. Session Viz Render Output (generated html from telemetry. never commit)
 internal-docs/agent-viz/
 
+# 3d. Scratch Space (ad-hoc working files and private material. never commit)
+scratch/
+
 # 4. Python Virtual Environments & Caches
 __pycache__/
 *.py[cod]
