@@ -721,3 +721,17 @@ Owner requested that agent activity belong to the existing Hermes dashboard, wit
   - The relay host is again overlay-first; a future commit converges the clone through the approved path.
   - Forcing a real dual-provider failure remains unsafe; that arm stays stub-proven and is documented as such.
 
+## ADR-048: Bounded Group Context Memory (Approved, Implementation Pending)
+- **Date**: 2026-10-13
+- **Status**: Approved by the owner 2026-10-13 ("build it next"); implementation pending. Extends ADR-047 §6 and `internal-docs/relay/CONTEXT_LIMITS.md`.
+- **Context**: The relay is verified stateless per turn (no WhatsApp thread awareness in the pinned Hermes; only an explicit quote carries). The owner wants short continuity for group conversations without pretending to read the room and without storing chat content.
+- **Decision**:
+  1. **Scope**: one opted-in free-response group first. Per-chat rolling window in process memory: the last 10 messages or 10 minutes, whichever is smaller. Dropped on restart. Never persisted to disk, never logged.
+  2. **Capture**: adapter-side, from the events the relay already receives; identifiers are stripped before storage (names only where already resolved through the existing display-name cache).
+  3. **Injection**: a bounded, clearly labelled recent-chatter block for the current turn only; the current message and any structured quote take precedence; injection never bypasses the outbound guards (notices, drafting, ceiling, final-reply claim all still apply).
+  4. **Kill switch**: an environment flag, default off; gateway restart clears all state; diagnostics are counts-only (window size, never content).
+  5. **Privacy surface**: chat content lives only in process memory; excluded from logs, exports, and agent-readable paths; the hub `.env` and Hermes state rules are unchanged.
+  6. **Acceptance**: stub tests for bounds, TTL eviction, group scoping, default-off, and redaction; host stubs on the patched source; one live test in the designated group; and a restart test proving the window does not survive.
+- **Consequences**: group conversations gain short in-memory continuity; per-turn context tokens rise slightly; mention-only groups are unchanged; the privacy surface grows by exactly one explicitly gated buffer.
+- **Brief**: `internal-docs/briefs/2026-10-13-group-context-memory.md`.
+

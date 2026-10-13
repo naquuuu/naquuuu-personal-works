@@ -1,5 +1,5 @@
 # NAQUUUU Workspace Status
-<!-- verified-against: ADR-047 -->
+<!-- verified-against: ADR-048 -->
 
 - Updated: 2026-10-13
 - Purpose: one-page digest for the WhatsApp relay and any agent that needs current context. Details live in `DECISION_LOG.md`, `HOSTS.md`, and the specs.
@@ -42,6 +42,7 @@
 
 ## Pending workspace items
 
+- Group context memory (ADR-048): approved 2026-10-13, implementation pending; scope, privacy gates, and acceptance frozen in `internal-docs/briefs/2026-10-13-group-context-memory.md`. Owner-confirmed as the next workstream.
 - Spotify taste snapshot (ADR-021): live fetch succeeded 2026-09-28 with existing authorization; cache-only status tested with zero network. Setup remains documented in SPOTIFY_INTEGRATION.md.
 - Model-backend placeholder: route personal model backends to the GCP project `naquuuu` (deferred; ROADMAP line 11).
 - SSH path: deferred (ADR-020); fallbacks are the Win32-OpenSSH release or Tailscale built-in SSH.
