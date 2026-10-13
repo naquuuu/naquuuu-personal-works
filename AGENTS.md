@@ -21,6 +21,7 @@ Before committing in any project, run the relevant gate from the hub root:
 | Gate | Command | When |
 | :--- | :--- | :--- |
 | **Sanitization & Leak Prevention** | `python scripts/verify_sanitization.py` | Before committing to any public repository |
+| **Agent Surface Parity** | `python scripts/verify_agent_sync.py` | Audits OpenCode, AGY, and Claude Code parity |
 | **Multi-Repo Audit** | `python scripts/sync_all_repos.py --strict` | Before ending a work session or pushing |
 | **Blog Reliability QA** | `python scripts/verify_blog_qa.py` (inside blog repo) | Any blog or portfolio HTML/CSS/JS edits |
 | **Host Readiness** | `python scripts/host_check.py` | Before starting dev on a standby host (Phase 4) |
@@ -83,7 +84,7 @@ The sanitization gate audits git-tracked content; it is **not** a model-input fi
 
 ## 4. Agent Orchestration (Root First)
 
-This workspace uses a 7-agent architecture with strict role separation, structured handoffs, and deterministic gates. Agent personas live in `.opencode/agent/*.md`; permissions and registry in `opencode.jsonc`. The two entry-point personas are also mirrored as Antigravity custom agents in `.agents/agents/*.md` (ADR-014).
+This workspace uses a 7-agent architecture with strict role separation, structured handoffs, and deterministic gates. Canonical agent personas live in `.opencode/agent/*.md` and are fully mirrored to `.agents/agents/*.md` for Antigravity (ADR-046); Claude Code routes via `CLAUDE.md`, and permissions and registry are set in `opencode.jsonc`.
 
 ### Entry Points
 The user speaks only to **two** agents directly:
