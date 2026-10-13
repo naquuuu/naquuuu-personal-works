@@ -93,7 +93,7 @@ CASES: list[dict] = [
         "id": "en-runaway-length",
         "lang": "en",
         "input": "summarize the relay status",
-        "bad": " ".join(f"Update number {i} for the relay." for i in range(1, 26)),
+        "bad": " ".join(f"Update number {i} for the relay." for i in range(1, 66)),
         "good": "The relay is healthy and answering normally.",
         "forbid": [],
         "no_followup": True,
@@ -126,6 +126,8 @@ def check_reply(case: dict, reply: str) -> list[str]:
     sanitized, is_clean = sanitize_outbound_text(reply, repetition_allowance=allowance)
     if not is_clean:
         violations.append("leak_or_loop_guard")
+    elif "\u2014" in sanitized:
+        violations.append("em_dash")
     if allowance is None and count_sentences(reply) > SENTENCE_CEILING:
         violations.append("sentence_ceiling")
     for pattern in case.get("forbid", []):

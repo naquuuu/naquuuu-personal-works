@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -16,7 +17,10 @@ import tempfile
 import threading
 
 from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY, requested_creative_allowance, requested_status_allowance
+from wa_group_memory import GroupMemory
 from wa_owner_gate import evaluate, is_sender_id, digits_only
+
+logger = logging.getLogger(__name__)
 
 GROUPS = 'WHATSAPP_GROUP_ALLOWED_USERS'
 PEOPLE = 'WHATSAPP_ALLOWED_USERS'
@@ -30,6 +34,15 @@ LOCK = threading.RLock()
 FINAL_CLAIM_SECONDS = 600
 FAILURE_LINE_SECONDS = 120
 FAILURE_LINES = frozenset({SAFE_FALLBACK_REPLY})
+# Bot-to-bot loop breaker (owner-set 2026-10-14): more than BURST_LIMIT replies
+# by the bot to one chat inside BURST_WINDOW_SECONDS trips a quiet cooldown.
+BURST_WINDOW_SECONDS = 300
+BURST_LIMIT = 20
+BURST_COOLDOWN_SECONDS = 600
+
+
+def _now_utc() -> dt.datetime:
+    return dt.datetime.now(dt.timezone.utc)
 
 
 def _entries(text: str, key: str) -> set[str]:
@@ -64,6 +77,9 @@ class ChatPolicy:
         self.status_requests: dict[tuple[str, str], dt.datetime] = {}
         self.final_claims: dict[tuple[str, str], dt.datetime] = {}
         self.recent_failures: dict[tuple[str, str], dt.datetime] = {}
+        self.reply_times: dict[str, list[dt.datetime]] = {}
+        self.reply_cooldowns: dict[str, dt.datetime] = {}
+        self.group_memory = GroupMemory.from_env_file(self.env_path)
         try:
             saved = json.loads(cache_path.read_text(encoding='utf-8'))
             if isinstance(saved, dict):
@@ -122,6 +138,10 @@ class ChatPolicy:
                     self.status_requests[(chat_id, message_id)] = now + dt.timedelta(minutes=10)
                 while len(self.status_requests) > 128:
                     self.status_requests.pop(next(iter(self.status_requests)))
+                if self.group_memory.enabled_for(chat_id):
+                    self.group_memory.record(chat_id, body,
+                                             name=self.names.get(sender) or self.names.get(digits_only(sender)) or "",
+                                             names=self.names)
 
     def scrub(self, text: str, *, chat_id: str | None = None, reply_to: str | None = None,
               notice_allowance: bool = False) -> str:
@@ -155,25 +175,65 @@ class ChatPolicy:
         text = self.env_path.read_text(encoding='utf-8')
         return bool(GROUP_RE.fullmatch(chat_id)) and chat_id in _entries(text, PROMOTED) and chat_id in _entries(text, GROUPS)
 
+    def inject_group_context(self, chat_id: str, text: str) -> str:
+        """Prepend the bounded recent-chatter block for an opted-in chat (ADR-048).
+
+        Returns the text unchanged when the window is disabled, empty, or when
+        there is nothing to say. The current message is excluded from the block
+        because observe() recorded it moments before this call. Diagnostics are
+        counts-only: window size and whether a block was produced, never content.
+        """
+        if not self.group_memory.enabled_for(chat_id):
+            return text
+        size = self.group_memory.window_size(chat_id)
+        block = self.group_memory.render(chat_id, skip_last=True)
+        logger.warning("group_memory_diag inject window=%d block=%d", size, int(bool(block)))
+        if block and str(text or "").strip():
+            return block + "\n\n" + text
+        return text
+
     def claim_final(self, chat_id: str, reply_to: str | None, content: str = "") -> bool:
         """End-of-turn idempotency: the first final claim wins for an inbound message.
 
         Returns True when this turn may send, False for a duplicate attempt
-        (retry events, double fallback paths). Status lines never consume the slot.
+        (retry events, double fallback paths) or while the bot-to-bot loop
+        breaker is cooling a chat down. Status lines never consume the slot.
         """
         if not reply_to:
             return True
         if self.is_status_message(content):
             return True
-        now = dt.datetime.now(dt.timezone.utc)
+        now = _now_utc()
         key = (chat_id, str(reply_to))
         with LOCK:
             self.final_claims = {k: v for k, v in self.final_claims.items() if v > now}
             if key in self.final_claims:
                 return False
+            if not self._burst_allows(chat_id, now):
+                logger.warning("reply_burst_suppressed=1")
+                return False
             self.final_claims[key] = now + dt.timedelta(seconds=FINAL_CLAIM_SECONDS)
             while len(self.final_claims) > 256:
                 self.final_claims.pop(next(iter(self.final_claims)))
+        return True
+
+    def _burst_allows(self, chat_id: str, now: dt.datetime) -> bool:
+        """Count logical replies per chat; trip a quiet cooldown past the limit."""
+        cooldown = self.reply_cooldowns.get(chat_id)
+        if cooldown and cooldown > now:
+            return False
+        if cooldown:
+            self.reply_cooldowns.pop(chat_id, None)
+        horizon = now - dt.timedelta(seconds=BURST_WINDOW_SECONDS)
+        times = [t for t in self.reply_times.get(chat_id, []) if t > horizon]
+        times.append(now)
+        self.reply_times[chat_id] = times
+        while len(self.reply_times) > 64:
+            self.reply_times.pop(next(iter(self.reply_times)))
+        if len(times) > BURST_LIMIT:
+            self.reply_cooldowns[chat_id] = now + dt.timedelta(seconds=BURST_COOLDOWN_SECONDS)
+            logger.warning("reply_burst count=%d cooldown_seconds=%d", len(times), BURST_COOLDOWN_SECONDS)
+            return False
         return True
 
     def release_final(self, chat_id: str, reply_to: str | None) -> None:

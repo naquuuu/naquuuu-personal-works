@@ -35,6 +35,8 @@ L-33. Relay trust pass (2026-10-13, ADR-047). One final reply per inbound messag
 
 L-34. Hash-verify every remote write script before its first live use (2026-10-13). A double-repr bug in `verify_soul_mirror.py` wrote an escaped one-line SOUL.md to the relay host; the hash-only mirror check caught the drift on the next run and the pre-change backup restored the exact persona. Keep the `--check`/`--apply` split, print hashes, and never skip the pre-change backup.
 
+L-35. Live feedback beats the earlier spec (2026-10-14). The ~20-sentence ceiling counted newlines and blocked legitimate warm replies (470 to 2270 characters with fallback spam); it now counts sentence enders only with a runaway cap of 60, and long answers ride the chat's bubble split. Em dashes are normalized deterministically at the boundary, bot-to-bot chat is allowed with a 20-reply/5-minute per-chat burst breaker (quiet 10-minute cooldown), and group context memory shipped per ADR-048. Receipt: `relay/2026-10-14-GROUP_MEMORY_AND_TUNING.md`.
+
 ## Open questions
 
 1. Compaction completed 2026-09-28 under ASTRA_ONESHOT authorization; L-01 through L-19 moved with stable IDs and L-13 remains resolvable in the archive.

@@ -207,9 +207,10 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': '<think>Draft</think> ' + repeated}), {})
 
     def test_indonesian_slang_and_factual_bot_response_allowed(self):
-        valid_response = 'Nggak, gue bot—nggak punya tubuh atau pengalaman begitu.'
-        res = self.policy.outbound({'chatId': GROUP, 'message': valid_response})
-        self.assertEqual(res['message'], valid_response)
+        raw_response = 'Nggak, gue bot\u2014nggak punya tubuh atau pengalaman begitu.'
+        normalized = 'Nggak, gue bot, nggak punya tubuh atau pengalaman begitu.'
+        res = self.policy.outbound({'chatId': GROUP, 'message': raw_response})
+        self.assertEqual(res['message'], normalized)
 
     def test_duplicate_failure_line_suppressed_per_turn_and_per_chat(self):
         turn = self.event('halo')
@@ -245,6 +246,27 @@ class PolicyTests(unittest.TestCase):
         self.assertTrue(self.policy.claim_final(GROUP, turn['messageId'], 'Jawaban final.'))
         # No reply target means no turn scope, so nothing is suppressed.
         self.assertTrue(self.policy.claim_final(GROUP, None, 'apa saja'))
+
+    def test_bot_loop_burst_breaker(self):
+        import datetime as dt
+        from unittest.mock import patch
+        import wa_chat_policy as wcp
+
+        current = [dt.datetime(2026, 10, 14, 0, 0, tzinfo=dt.timezone.utc)]
+        with patch.object(wcp, "_now_utc", lambda: current[0]):
+            for i in range(1, wcp.BURST_LIMIT + 1):
+                self.assertTrue(self.policy.claim_final(GROUP, f"burst-{i}", f"jawaban {i}"),
+                                f"reply {i} should pass")
+            # The reply past the limit inside the window is suppressed quietly.
+            self.assertFalse(self.policy.claim_final(GROUP, "burst-over", "jawaban lebih"))
+            current[0] += dt.timedelta(seconds=60)
+            self.assertFalse(self.policy.claim_final(GROUP, "burst-later", "masih diblok"))
+            # A different chat is unaffected.
+            self.assertTrue(self.policy.claim_final(GROUP + "-two", "other-turn", "jawaban"))
+            # After the cooldown the chat recovers, and claims stay one-shot.
+            current[0] += dt.timedelta(seconds=wcp.BURST_COOLDOWN_SECONDS + 1)
+            self.assertTrue(self.policy.claim_final(GROUP, "after-cooldown", "lagi"))
+            self.assertFalse(self.policy.claim_final(GROUP, "after-cooldown", "lagi"))
 
     def test_status_ask_grants_one_notice_but_only_when_asked(self):
         blocked = self.policy.outbound({'chatId': GROUP, 'message': 'Model restored: Nous Portal is back online.'})

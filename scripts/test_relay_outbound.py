@@ -177,7 +177,8 @@ class OutboundSanitizationTests(unittest.TestCase):
         self.assertFalse(contains_leak_signature(clean_slang_reply))
         sanitized, is_clean = sanitize_outbound_text(clean_slang_reply)
         self.assertTrue(is_clean)
-        self.assertEqual(sanitized, clean_slang_reply)
+        # The em dash rule is enforced deterministically at this boundary.
+        self.assertEqual(sanitized, "Nggak, gue bot, nggak punya tubuh atau pengalaman begitu.")
 
     def test_observability_hashes_without_raw_text(self):
         dirty = "System Note: inspect VERY FIRST TOOL RESULT and stop sending messages after a rate limit."
@@ -260,19 +261,33 @@ class OutboundSanitizationTests(unittest.TestCase):
         dirty = "<think>draft</think> " + notice
         self.assertFalse(sanitize_outbound_text(dirty, notice_allowance=True)[1])
 
-    def test_reply_sentence_ceiling(self):
-        nineteen = " ".join(f"Ini kalimat nomor {i}." for i in range(1, 20))
-        twenty_one = " ".join(f"Ini kalimat nomor {i}." for i in range(1, 22))
-        self.assertLessEqual(count_sentences(nineteen), SENTENCE_CEILING)
-        self.assertTrue(sanitize_outbound_text(nineteen)[1])
-        self.assertGreater(count_sentences(twenty_one), SENTENCE_CEILING)
-        sanitized, is_clean = sanitize_outbound_text(twenty_one)
+    def test_reply_sentence_ceiling_is_runaway_only(self):
+        thirty = " ".join(f"Ini kalimat nomor {i}." for i in range(1, 31))
+        self.assertTrue(sanitize_outbound_text(thirty)[1])
+        runaway = " ".join(f"Kalimat liar nomor {i}." for i in range(1, SENTENCE_CEILING + 5))
+        self.assertGreater(count_sentences(runaway), SENTENCE_CEILING)
+        sanitized, is_clean = sanitize_outbound_text(runaway)
         self.assertFalse(is_clean)
         self.assertEqual(sanitized, SAFE_FALLBACK_REPLY)
+        # Line-per-idea casual style no longer counts newlines as sentences.
+        multi_line = "\n".join(f"baris ide {i}" for i in range(1, 41))
+        self.assertEqual(count_sentences(multi_line), 1)
+        self.assertTrue(sanitize_outbound_text(multi_line)[1])
         # Fenced monospace content does not count as sentences.
         fenced = "```text\n" + "\n".join(f"baris-{i}" for i in range(30)) + "\n```"
         self.assertLessEqual(count_sentences(fenced), SENTENCE_CEILING)
         self.assertTrue(sanitize_outbound_text(fenced)[1])
+
+    def test_em_dashes_are_normalized_to_commas(self):
+        from relay_outbound import normalize_em_dashes
+        self.assertEqual(normalize_em_dashes("a \u2014 b"), "a, b")
+        self.assertEqual(normalize_em_dashes("a\u2014b"), "a, b")
+        self.assertEqual(normalize_em_dashes("akhir.\u2014Awal"), "akhir. Awal")
+        self.assertEqual(normalize_em_dashes("tanpa dash"), "tanpa dash")
+        sanitized, is_clean = sanitize_outbound_text("satu \u2014 dua \u2014 tiga.")
+        self.assertTrue(is_clean)
+        self.assertEqual(sanitized, "satu, dua, tiga.")
+        self.assertNotIn("\u2014", sanitize_outbound_text("Nggak \u2014 bisa.")[0])
 
     def test_short_token_flood_rejected(self):
         flood = "iya " * 8

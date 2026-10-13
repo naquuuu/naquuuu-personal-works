@@ -189,6 +189,21 @@ def verify_source(repo: Path) -> None:
     assert len(receipts) == 3
     print('actual_source_send_poll_stubs=pass; normal_queued_crash_silence=pass; synthetic_canary=pass; final_reply_single_turn=pass')
 
+    build = next(n for n in ast.walk(adapter) if isinstance(n, ast.AsyncFunctionDef)
+                 and n.name == '_build_message_event')
+    injection = next(s for s in ast.walk(build) if isinstance(s, ast.Assign)
+                     and 'inject_group_context' in ast.unparse(s))
+
+    class FakeMemoryPolicy:
+        def inject_group_context(self, chat_id, text):
+            return f"CTX[{chat_id}]\n\n{text}" if text else text
+
+    namespace = {'_wa_policy': lambda: FakeMemoryPolicy(), 'data': {'chatId': 'synthetic-chat'}, 'body': 'halo'}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[injection], type_ignores=[])),
+                 '<group-memory-injection>', 'exec'), namespace)
+    assert namespace['body'] == 'CTX[synthetic-chat]\n\nhalo', 'Group memory injection wiring changed'
+    print('group_memory_injection_source=pass')
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()

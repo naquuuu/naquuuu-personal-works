@@ -723,7 +723,7 @@ Owner requested that agent activity belong to the existing Hermes dashboard, wit
 
 ## ADR-048: Bounded Group Context Memory (Approved, Implementation Pending)
 - **Date**: 2026-10-13
-- **Status**: Approved by the owner 2026-10-13 ("build it next"); implementation pending. Extends ADR-047 §6 and `internal-docs/relay/CONTEXT_LIMITS.md`.
+- **Status**: Implemented and live-verified 2026-10-14 (remembered a code given earlier inside the window; forgot it after a restart). Receipt: `relay/2026-10-14-GROUP_MEMORY_AND_TUNING.md`.
 - **Context**: The relay is verified stateless per turn (no WhatsApp thread awareness in the pinned Hermes; only an explicit quote carries). The owner wants short continuity for group conversations without pretending to read the room and without storing chat content.
 - **Decision**:
   1. **Scope**: one opted-in free-response group first. Per-chat rolling window in process memory: the last 10 messages or 10 minutes, whichever is smaller. Dropped on restart. Never persisted to disk, never logged.
@@ -734,4 +734,11 @@ Owner requested that agent activity belong to the existing Hermes dashboard, wit
   6. **Acceptance**: stub tests for bounds, TTL eviction, group scoping, default-off, and redaction; host stubs on the patched source; one live test in the designated group; and a restart test proving the window does not survive.
 - **Consequences**: group conversations gain short in-memory continuity; per-turn context tokens rise slightly; mention-only groups are unchanged; the privacy surface grows by exactly one explicitly gated buffer.
 - **Brief**: `internal-docs/briefs/2026-10-13-group-context-memory.md`.
+- **Implementation notes (2026-10-14)**: the probe prints configuration counts only (cross-process window state is deliberately unreadable); runtime diagnostics are counts-only journal lines. In mention-only groups, messages without a recognized mention entity are dropped upstream before dispatch; reply-to-bot always passes. One group is opted in via host env; `--disable` is the kill switch.
+
+## ADR-047 implementation correction (2026-10-14)
+- **Ceiling semantics**: the ~20-sentence cap counted newlines as sentence breaks and blocked legitimate warm replies (470 to 2270 characters, five fallback blocks observed live). The guard now counts sentence enders only and blocks only runaway length (hard cap 60); long answers ship as one message and WhatsApp renders them as stacked bubbles. Loop protection remains the primary flood guard.
+- **Em dash**: the persona rule is now enforced deterministically at the outbound sanitization boundary (`normalize_em_dashes`, comma substitution with punctuation tidy), so no em dash can ship in any reply, language, or quote.
+- **Bot-to-bot**: allowed in any language, with an explicit no-endless-loop persona rule plus a deterministic breaker: more than 20 replies by the bot to one chat inside 5 minutes triggers a quiet 10-minute cooldown for that chat (`reply_burst`, `reply_burst_suppressed`, counts-only logs).
+- **Warmth**: a curator-reviewed basa-basi rule (guest-first warmth, one warm opening line, graceful feedback handling) landed in the persona and the host mirror.
 

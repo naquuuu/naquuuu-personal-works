@@ -73,9 +73,47 @@ RE_STATUS_ASK = re.compile(
     re.IGNORECASE,
 )
 
-# Hard ceiling on ordinary conversational replies; text art and explicit
-# repetition requests keep their own bounded allowances instead.
-SENTENCE_CEILING = 20
+# Hard safety ceiling on ordinary conversational replies. The live relay showed
+# the earlier "about twenty" limit blocking legitimate warm answers, and the
+# owner confirmed long replies are welcome (WhatsApp splits them into bubbles),
+# so this is now a runaway-only cap; loop protection remains the primary guard.
+SENTENCE_CEILING = 60
+
+
+def _count_sentences(text: str) -> int:
+    """Sentence enders only (no newlines); fenced blocks are exempt."""
+    stripped = re.sub(r"(?ms)^\s*```[^\n]*\n.*?^\s*```\s*$", "", text)
+    segments = [segment for segment in re.split(r"[.!?\u2026]+", stripped) if segment.strip()]
+    return len(segments)
+
+
+def count_sentences(text: str) -> int:
+    """Public alias used by tests and the evaluation set."""
+    return _count_sentences(text)
+
+
+def exceeds_sentence_ceiling(text: str, *, repetition_allowance: dict | None = None) -> bool:
+    """Runaway-only cap; explicit art/repetition keeps its own bounds instead."""
+    if repetition_allowance:
+        return False
+    return _count_sentences(text) > SENTENCE_CEILING
+
+
+# The owner's no-em-dash rule is enforced deterministically at this boundary so
+# it cannot reach WhatsApp in any reply, language, or quote.
+RE_EM_DASH = re.compile(r"\s*\u2014\s*")
+
+
+def normalize_em_dashes(text: str) -> str:
+    """Replace em dashes with a comma per the standing owner rule."""
+    if "\u2014" not in text:
+        return text
+    text = RE_EM_DASH.sub(", ", text)
+    text = re.sub(r"([.!?])\s*,\s*", r"\1 ", text)
+    text = re.sub(r",\s*,", ",", text)
+    text = re.sub(r",\s*([.!?])", r"\1", text)
+    text = re.sub(r"\s+([,.;:!?])", r"\1", text)
+    return text
 
 
 def _without_bot_mention(text: str) -> str:
@@ -250,20 +288,6 @@ def has_repetition_loop(text: str) -> bool:
     return False
 
 
-def count_sentences(text: str) -> int:
-    """Sentence-ish segments for the reply ceiling; fenced blocks are exempt."""
-    stripped = re.sub(r"(?ms)^\s*```[^\n]*\n.*?^\s*```\s*$", "", text)
-    segments = [segment for segment in re.split(r"[.!?\u2026\n]+", stripped) if segment.strip()]
-    return len(segments)
-
-
-def exceeds_sentence_ceiling(text: str, *, repetition_allowance: dict | None = None) -> bool:
-    """Hard ceiling on ordinary replies; explicit art/repetition keeps its own bounds."""
-    if repetition_allowance:
-        return False
-    return count_sentences(text) > SENTENCE_CEILING
-
-
 def contains_leak_signature(text: str, *, repetition_allowance: dict | None = None,
                            notice_allowance: bool = False) -> bool:
     """Checks whether text contains internal harness tokens, drafting, or repetition loops.
@@ -324,7 +348,7 @@ def sanitize_outbound_text(text: str, *, repetition_allowance: dict | None = Non
         digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
         logger.warning("outbound_leak_blocked: hash=%s length=%d reason=ceiling", digest, len(text))
         return SAFE_FALLBACK_REPLY, False
-    return text, True
+    return normalize_em_dashes(text), True
 
 
 def sanitize_relay_events(events: list[dict], *, repetition_allowance: dict | None = None) -> tuple[str, bool]:
