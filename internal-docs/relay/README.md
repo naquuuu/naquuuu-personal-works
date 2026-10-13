@@ -118,6 +118,8 @@ Group behaviour is decided per chat, and two decisions stay separate: who may **
 
 **Silence.** The gateway accepts `NO_REPLY`, so when nothing is worth saying the assistant emits `NO_REPLY` and sends no message.
 
+**Join rule.** The bot speaks when addressed; in a free-response group it may also answer an unaddressed question clearly aimed at it or its domain (the owner, the workspace, the bot itself), and it stays out of side conversations. It never claims to have read the room. One reply per message: a redelivered message or retry gets no second reply. Persona text: `WHATSAPP_SOUL.md` group presence; source-level behaviour: `wa_group_guard.py` plus the final-reply claim in the adapter send path.
+
 **No thread awareness.** On the installed Hermes v0.21.4 there is no observation or thread awareness for WhatsApp (upstream support is Telegram-only), so the relay is stateless per turn: no stored group chatter, no message-history context, nothing carried between turns. Each turn sees only the chat text of the triggering message. Never promise a group member that the bot read the room.
 
 - Promotion is host-side and owner-run: `scripts/wa_free_response.py` edits `WHATSAPP_FREE_RESPONSE_CHATS` idempotently, with a timestamped backup, and prints counts only — never chat ids.

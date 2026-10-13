@@ -8,9 +8,12 @@ from unittest.mock import patch
 
 from relay_outbound import (
     SAFE_FALLBACK_REPLY,
+    SENTENCE_CEILING,
     collapse_adjacent_duplicate_texts,
     contains_internal_drafting,
+    contains_internal_notice,
     contains_leak_signature,
+    count_sentences,
     has_repetition_loop,
     sanitize_outbound_text,
     sanitize_relay_events,
@@ -220,6 +223,64 @@ class OutboundSanitizationTests(unittest.TestCase):
             {'type': 'text', 'part': {'messageID': 'first', 'text': 'Interim response.'}},
             {'type': 'text', 'part': {'messageID': 'last', 'text': 'Final response.'}},
         ]), ('Final response.', True))
+
+    def test_model_provider_and_health_notices_blocked(self):
+        blocked = [
+            "Model restored: Nous Portal is back online.",
+            "Switched to the fallback model for this reply.",
+            "Provider failover: using Gemini now.",
+            "Gateway restarted; bridge reconnected.",
+            "Health check: OK, uptime 4d 2h.",
+            "Model kembali normal sekarang.",
+        ]
+        for text in blocked:
+            self.assertTrue(contains_internal_notice(text), text)
+            sanitized, is_clean = sanitize_outbound_text(text)
+            self.assertFalse(is_clean, text)
+            self.assertEqual(sanitized, SAFE_FALLBACK_REPLY, text)
+
+    def test_notice_like_conversation_and_outage_notices_pass(self):
+        allowed = [
+            "Nous Portal is the primary provider and Gemini is the fallback.",
+            "Provider lagi down, coba lagi bentar ya.",
+            "Kalau 429 muncul, gue tunggu sebentar terus coba lagi.",
+            "Foundation model biasanya butuh GPU besar.",
+            "Gateway-nya aktif?",
+        ]
+        for text in allowed:
+            self.assertFalse(contains_internal_notice(text), text)
+            self.assertTrue(sanitize_outbound_text(text)[1], text)
+
+    def test_notice_allowance_bypasses_only_the_notice_class(self):
+        notice = "Gateway restarted; bridge reconnected."
+        self.assertFalse(sanitize_outbound_text(notice)[1])
+        sanitized, clean = sanitize_outbound_text(notice, notice_allowance=True)
+        self.assertTrue(clean)
+        self.assertEqual(sanitized, notice)
+        dirty = "<think>draft</think> " + notice
+        self.assertFalse(sanitize_outbound_text(dirty, notice_allowance=True)[1])
+
+    def test_reply_sentence_ceiling(self):
+        nineteen = " ".join(f"Ini kalimat nomor {i}." for i in range(1, 20))
+        twenty_one = " ".join(f"Ini kalimat nomor {i}." for i in range(1, 22))
+        self.assertLessEqual(count_sentences(nineteen), SENTENCE_CEILING)
+        self.assertTrue(sanitize_outbound_text(nineteen)[1])
+        self.assertGreater(count_sentences(twenty_one), SENTENCE_CEILING)
+        sanitized, is_clean = sanitize_outbound_text(twenty_one)
+        self.assertFalse(is_clean)
+        self.assertEqual(sanitized, SAFE_FALLBACK_REPLY)
+        # Fenced monospace content does not count as sentences.
+        fenced = "```text\n" + "\n".join(f"baris-{i}" for i in range(30)) + "\n```"
+        self.assertLessEqual(count_sentences(fenced), SENTENCE_CEILING)
+        self.assertTrue(sanitize_outbound_text(fenced)[1])
+
+    def test_short_token_flood_rejected(self):
+        flood = "iya " * 8
+        self.assertTrue(has_repetition_loop(flood.strip()))
+        self.assertFalse(sanitize_outbound_text(flood.strip())[1])
+        emphasis = "iya iya iya, sabar dong"
+        self.assertFalse(has_repetition_loop(emphasis))
+        self.assertTrue(sanitize_outbound_text(emphasis)[1])
 
 
 if __name__ == "__main__":

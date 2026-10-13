@@ -48,3 +48,13 @@ The 00:29 group screenshot shows a model-restored notice followed by two identic
 7. **Rollout:** compare source with the live pinned checkout, make timestamped backups, stage one change set at a time, restart the single gateway once per staged set, and inspect service/bridge health. Run one controlled greeting and group mention with the designated target; verify exactly one reply and typing cleanup. Roll back on leakage, duplication, or connection loss. Update this table's status and `STATUS.md` with dated evidence; log any agreed architectural change in `DECISION_LOG.md`.
 
 For any relay or model-input path change, use synthetic-secret canaries before rollout. Keep Tier 1 values and Hermes state out of agent context. Follow `OUTBOUND_LEAK_FIX_PLAN.md` for backups and rollback.
+
+## Update 2026-10-13 (ADR-047, receipt `2026-10-13-RELAY_TRUST_PASS.md`)
+
+- P0 typing presence: live canary cleared typing on a DM greeting and one group mention; the exhaustive failure-path matrix remains stub-proven.
+- P0 one final reply: final-reply claim + per-turn failure-line dedupe deployed; canary produced exactly one reply each; live retry replay not separately forced.
+- P0 outbound guard: notice suppression fixtures now cross send, edit, and proactive paths; eval set runs inside `sync_all_repos.py --strict`.
+- P0 provider errors: single plain failure line proven by send-path stubs (release-on-uncertain plus fallback dedupe); forcing real dual-provider failure remains skipped as unsafe.
+- P0/P1 group policy: DM + mention behavior proven live; the owner command matrix (`/allow-*`, `/remove`), guest turns, and proactive sends remain unverified.
+- P2 Indonesian casual replies: `scripts/wa_eval.py` (ten anonymized ID/EN cases) catches the recorded misfires and runs green in the gate.
+- Persona: tone control, joining rule, notice rule, statelessness sharpening, em dash ban after curator review; mirror hash-verified.

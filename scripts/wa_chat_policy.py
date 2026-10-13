@@ -6,6 +6,7 @@ State remains local. No CLI accepts model-supplied identities or mutations.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,7 +15,7 @@ import shutil
 import tempfile
 import threading
 
-from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY, requested_creative_allowance
+from relay_outbound import sanitize_outbound_text, SAFE_FALLBACK_REPLY, requested_creative_allowance, requested_status_allowance
 from wa_owner_gate import evaluate, is_sender_id, digits_only
 
 GROUPS = 'WHATSAPP_GROUP_ALLOWED_USERS'
@@ -24,6 +25,11 @@ COMMANDS = {'/allow-group', '/allow-person', '/list', '/remove'}
 GROUP_RE = re.compile(r'^[0-9]{5,25}@g\.us$')
 RAW_RE = re.compile(r'(?:@\+?\d+|\+?\d+(?:[-:]\d+)*@(?:s\.whatsapp\.net|lid|g\.us)|\+?\d{6,})|(?<!\w)\+?\d(?:[ ()-]*\d){6,}(?!\w)')
 LOCK = threading.RLock()
+# Request-scoped final reply: the first final claim wins for a turn, and an
+# identical failure line is never delivered twice for the same chat.
+FINAL_CLAIM_SECONDS = 600
+FAILURE_LINE_SECONDS = 120
+FAILURE_LINES = frozenset({SAFE_FALLBACK_REPLY})
 
 
 def _entries(text: str, key: str) -> set[str]:
@@ -55,6 +61,9 @@ class ChatPolicy:
         self.names: dict[str, str] = {}
         self.active_turns: dict[str, dict] = {}
         self.creative_requests: dict[tuple[str, str], tuple[dict, dt.datetime]] = {}
+        self.status_requests: dict[tuple[str, str], dt.datetime] = {}
+        self.final_claims: dict[tuple[str, str], dt.datetime] = {}
+        self.recent_failures: dict[tuple[str, str], dt.datetime] = {}
         try:
             saved = json.loads(cache_path.read_text(encoding='utf-8'))
             if isinstance(saved, dict):
@@ -105,15 +114,25 @@ class ChatPolicy:
                     self.creative_requests[(chat_id, message_id)] = (allowance, now + dt.timedelta(minutes=10))
                 while len(self.creative_requests) > 128:
                     self.creative_requests.pop(next(iter(self.creative_requests)))
+                self.status_requests = {
+                    key: value for key, value in self.status_requests.items()
+                    if value > now
+                }
+                if message_id and requested_status_allowance(body):
+                    self.status_requests[(chat_id, message_id)] = now + dt.timedelta(minutes=10)
+                while len(self.status_requests) > 128:
+                    self.status_requests.pop(next(iter(self.status_requests)))
 
-    def scrub(self, text: str, *, chat_id: str | None = None, reply_to: str | None = None) -> str:
+    def scrub(self, text: str, *, chat_id: str | None = None, reply_to: str | None = None,
+              notice_allowance: bool = False) -> str:
         repetition_allowance = None
         if chat_id and reply_to:
             with LOCK:
                 grant = self.creative_requests.get((chat_id, reply_to))
                 if grant and grant[1] > dt.datetime.now(dt.timezone.utc):
                     repetition_allowance = grant[0]
-        sanitized, is_clean = sanitize_outbound_text(text, repetition_allowance=repetition_allowance)
+        sanitized, is_clean = sanitize_outbound_text(text, repetition_allowance=repetition_allowance,
+                                                     notice_allowance=notice_allowance)
         if not is_clean:
             return SAFE_FALLBACK_REPLY
 
@@ -136,6 +155,35 @@ class ChatPolicy:
         text = self.env_path.read_text(encoding='utf-8')
         return bool(GROUP_RE.fullmatch(chat_id)) and chat_id in _entries(text, PROMOTED) and chat_id in _entries(text, GROUPS)
 
+    def claim_final(self, chat_id: str, reply_to: str | None, content: str = "") -> bool:
+        """End-of-turn idempotency: the first final claim wins for an inbound message.
+
+        Returns True when this turn may send, False for a duplicate attempt
+        (retry events, double fallback paths). Status lines never consume the slot.
+        """
+        if not reply_to:
+            return True
+        if self.is_status_message(content):
+            return True
+        now = dt.datetime.now(dt.timezone.utc)
+        key = (chat_id, str(reply_to))
+        with LOCK:
+            self.final_claims = {k: v for k, v in self.final_claims.items() if v > now}
+            if key in self.final_claims:
+                return False
+            self.final_claims[key] = now + dt.timedelta(seconds=FINAL_CLAIM_SECONDS)
+            while len(self.final_claims) > 256:
+                self.final_claims.pop(next(iter(self.final_claims)))
+        return True
+
+    def release_final(self, chat_id: str, reply_to: str | None) -> None:
+        """Un-claim a turn after a definite, unconfirmed send failure so a single
+        plain failure line (or a user retry) can still go out."""
+        if not reply_to:
+            return
+        with LOCK:
+            self.final_claims.pop((chat_id, str(reply_to)), None)
+
     def outbound(self, payload: dict, *, proactive: bool = False) -> dict:
         """Keep routing IDs host-side; scrub every user-visible text field."""
         chat_id = str(payload.get('chatId') or '')
@@ -153,14 +201,34 @@ class ChatPolicy:
 
         result = dict(payload)
         reply_to = str(payload.get('replyTo') or '') or None
+        notice_allowance = False
+        if reply_to:
+            with LOCK:
+                grant = self.status_requests.get((chat_id, reply_to))
+                notice_allowance = bool(grant and grant > dt.datetime.now(dt.timezone.utc))
         for key in ('message', 'caption', 'question', 'fileName', 'name', 'address'):
             if isinstance(result.get(key), str):
-                result[key] = self.scrub(result[key], chat_id=chat_id, reply_to=reply_to)
+                result[key] = self.scrub(result[key], chat_id=chat_id, reply_to=reply_to,
+                                         notice_allowance=notice_allowance)
         if isinstance(result.get('options'), list):
-            result['options'] = [self.scrub(str(v), chat_id=chat_id, reply_to=reply_to) for v in result['options']]
+            result['options'] = [self.scrub(str(v), chat_id=chat_id, reply_to=reply_to,
+                                            notice_allowance=notice_allowance) for v in result['options']]
         for mention in result.get('mentions') or []:
             if not is_sender_id(mention) or not self.names.get(digits_only(mention)):
                 raise ValueError('Unresolved mention; delivery refused.')
+
+        text = result.get('message')
+        if isinstance(text, str) and text in FAILURE_LINES:
+            now = dt.datetime.now(dt.timezone.utc)
+            digest = hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]
+            key = (chat_id, reply_to) if reply_to else (chat_id, digest)
+            with LOCK:
+                self.recent_failures = {k: v for k, v in self.recent_failures.items() if v > now}
+                if key in self.recent_failures:
+                    return {}
+                self.recent_failures[key] = now + dt.timedelta(seconds=FAILURE_LINE_SECONDS)
+                while len(self.recent_failures) > 256:
+                    self.recent_failures.pop(next(iter(self.recent_failures)))
         return result
 
     def intercept(self, event: dict) -> str | None:

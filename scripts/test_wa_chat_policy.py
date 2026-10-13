@@ -121,8 +121,10 @@ class PolicyTests(unittest.TestCase):
         res = self.policy.outbound(draft_payload)
         self.assertEqual(res['message'], SAFE_FALLBACK_REPLY)
 
+        # A distinct chat is a distinct failure surface; identical fallback text is
+        # only de-duplicated inside one chat/turn (see the duplicate-fallback test).
         harness_payload = {
-            'chatId': GROUP,
+            'chatId': GROUP + '-two',
             'message': 'System Note: This conversation is happening via WhatsApp. inspect VERY FIRST TOOL RESULT.',
         }
         res2 = self.policy.outbound(harness_payload)
@@ -199,13 +201,82 @@ class PolicyTests(unittest.TestCase):
         self.policy.observe(request)
         repeated = 'I love you. I love you. I love you. I love you. I love you.'
         self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': repeated})['message'], repeated)
+        # Over-count is the first failure for this turn; both a repeated failure and
+        # a drafting failure for the same turn are suppressed ({}), never delivered.
         self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': repeated + ' I love you.'})['message'], SAFE_FALLBACK_REPLY)
-        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': '<think>Draft</think> ' + repeated})['message'], SAFE_FALLBACK_REPLY)
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'replyTo': request['messageId'], 'message': '<think>Draft</think> ' + repeated}), {})
 
     def test_indonesian_slang_and_factual_bot_response_allowed(self):
         valid_response = 'Nggak, gue bot—nggak punya tubuh atau pengalaman begitu.'
         res = self.policy.outbound({'chatId': GROUP, 'message': valid_response})
         self.assertEqual(res['message'], valid_response)
+
+    def test_duplicate_failure_line_suppressed_per_turn_and_per_chat(self):
+        turn = self.event('halo')
+        self.policy.observe(turn)
+        first = self.policy.outbound({'chatId': GROUP, 'replyTo': turn['messageId'], 'message': SAFE_FALLBACK_REPLY})
+        self.assertEqual(first['message'], SAFE_FALLBACK_REPLY)
+        second = self.policy.outbound({'chatId': GROUP, 'replyTo': turn['messageId'], 'message': SAFE_FALLBACK_REPLY})
+        self.assertEqual(second, {})
+        # A different turn may still receive its own single failure line.
+        other = self.event('halo lagi')
+        self.policy.observe(other)
+        third = self.policy.outbound({'chatId': GROUP, 'replyTo': other['messageId'], 'message': SAFE_FALLBACK_REPLY})
+        self.assertEqual(third['message'], SAFE_FALLBACK_REPLY)
+
+    def test_duplicate_failure_line_without_reply_to(self):
+        first = self.policy.outbound({'chatId': GROUP, 'message': SAFE_FALLBACK_REPLY})
+        self.assertEqual(first['message'], SAFE_FALLBACK_REPLY)
+        second = self.policy.outbound({'chatId': GROUP, 'message': SAFE_FALLBACK_REPLY})
+        self.assertEqual(second, {})
+        # Normal identical short replies are conversation, not failure lines.
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'message': 'iya'})['message'], 'iya')
+        self.assertEqual(self.policy.outbound({'chatId': GROUP, 'message': 'iya'})['message'], 'iya')
+
+    def test_final_claim_and_release_are_turn_scoped(self):
+        turn = self.event('kerjakan ini')
+        self.assertTrue(self.policy.claim_final(GROUP, turn['messageId'], 'Jawaban final.'))
+        self.assertFalse(self.policy.claim_final(GROUP, turn['messageId'], 'Jawaban final lagi.'))
+        # Status lines never consume the final slot.
+        self.assertTrue(self.policy.claim_final(GROUP, 'turn-status', 'masih aku kerjakan.'))
+        self.assertTrue(self.policy.claim_final(GROUP, 'turn-status', 'Jawaban final.'))
+        # A definite send failure releases the turn so one plain failure can go out.
+        self.policy.release_final(GROUP, turn['messageId'])
+        self.assertTrue(self.policy.claim_final(GROUP, turn['messageId'], 'Jawaban final.'))
+        # No reply target means no turn scope, so nothing is suppressed.
+        self.assertTrue(self.policy.claim_final(GROUP, None, 'apa saja'))
+
+    def test_status_ask_grants_one_notice_but_only_when_asked(self):
+        blocked = self.policy.outbound({'chatId': GROUP, 'message': 'Model restored: Nous Portal is back online.'})
+        self.assertEqual(blocked['message'], SAFE_FALLBACK_REPLY)
+
+        ask = self.event('cek status provider dong')
+        self.policy.observe(ask)
+        allowed = self.policy.outbound({'chatId': GROUP, 'replyTo': ask['messageId'],
+                                        'message': 'Provider semuanya normal, gateway aktif.'})
+        self.assertEqual(allowed['message'], 'Provider semuanya normal, gateway aktif.')
+        # The grant is bound to the asking message, not to the chat.
+        other = self.event('halo')
+        self.policy.observe(other)
+        blocked_again = self.policy.outbound({'chatId': GROUP, 'replyTo': other['messageId'],
+                                              'message': 'Provider semuanya normal, gateway aktif.'})
+        self.assertEqual(blocked_again['message'], SAFE_FALLBACK_REPLY)
+
+    def test_genuine_outage_notice_passes_without_grant(self):
+        res = self.policy.outbound({'chatId': GROUP, 'message': 'Provider lagi down, coba lagi bentar ya.'})
+        self.assertEqual(res['message'], 'Provider lagi down, coba lagi bentar ya.')
+
+    def test_notices_blocked_on_edit_and_proactive_paths(self):
+        notice = 'Model restored: Nous Portal is back online.'
+        # Edit path uses scrub directly, with no turn context.
+        self.assertEqual(self.policy.scrub(notice), SAFE_FALLBACK_REPLY)
+        # Proactive path uses outbound(proactive=True) on a promoted group.
+        proactive = self.policy.outbound({'chatId': GROUP, 'message': notice}, proactive=True)
+        self.assertEqual(proactive['message'], SAFE_FALLBACK_REPLY)
+        # Requested text art still passes on the proactive path (no notice, no loop).
+        art = '```text\nsayang sayang sayang\n```'
+        kept = self.policy.outbound({'chatId': GROUP, 'message': art}, proactive=True)
+        self.assertEqual(kept['message'], art)
 
 
 if __name__ == '__main__':

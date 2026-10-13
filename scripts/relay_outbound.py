@@ -41,6 +41,42 @@ RE_LEADING_ID_AFFECTION = re.compile(r"^\s*(\d{1,6})\s+kata\s+(sayang|cinta|kasi
 RE_FOLLOWUP = re.compile(r"^(?:do that|make that|draw that|write that|say that|repeat that|show that|create that|do it|the same|please|yes|ini|itu|lanjutkan|yang tadi|itu saja|iya)[.!? ]*$", re.IGNORECASE)
 RE_REPEAT_ONLY = re.compile(r"^[\W_]*$", re.UNICODE)
 
+# Internal chatter notices (model routing, provider failover, service health).
+# Combination matching keeps ordinary conversation about models, providers, or
+# rate limits passing while blocking routine infrastructure announcements.
+RE_NOTICE_SUBJECT = re.compile(r"\b(?:model|provider|fallback|routing|rute)\b", re.IGNORECASE)
+RE_NOTICE_TRANSITION = re.compile(
+    r"\b(?:restored|switched\s+to|switching\s+to|failing\s+over|failover|failed\s+over|"
+    r"recovered|reconnected|reconnecting|back\s+online|now\s+(?:using|on)\b|upgraded\s+to|"
+    r"kembali\s+(?:normal|aktif|online)|dialihkan\s+ke\b|pindah\s+ke\s+(?:model|provider)|"
+    r"fallback\s+aktif)\b",
+    re.IGNORECASE,
+)
+RE_NOTICE_COMPONENT = re.compile(r"\b(?:gateway|bridge|dashboard|systemd|service|health|uptime)\b", re.IGNORECASE)
+RE_NOTICE_COMPONENT_STATE = re.compile(
+    r"\b(?:restarted|reloaded|rebooted|restored|reconnected|recovered|connected|terhubung|"
+    r"healthy|aktif|is\s+active|normal|aman|ok|okay)\b",
+    re.IGNORECASE,
+)
+NOTICE_SHORT_LIMIT = 180
+
+# A status ask from the chat grants one short status notice for that same turn
+# (the "owner explicitly asks" arm of the reply-hygiene rule).
+RE_STATUS_SUBJECT = re.compile(
+    r"\b(?:status|health|kesehatan|uptime|provider|model|gateway|bridge|hermes|relay|"
+    r"server|down|error|gagal|mati)\b",
+    re.IGNORECASE,
+)
+RE_STATUS_ASK = re.compile(
+    r"(?:\?|^\s*(?:cek|check|liat|lihat|tanya|kasih\s+tau|kabarin|show|apa|what|how|"
+    r"gimana|gmn|kenapa|kok|is|are|lagi|masih|update)\b|^\s*(?:status|health|uptime|provider|model|gateway|bridge)\b)",
+    re.IGNORECASE,
+)
+
+# Hard ceiling on ordinary conversational replies; text art and explicit
+# repetition requests keep their own bounded allowances instead.
+SENTENCE_CEILING = 20
+
 
 def _without_bot_mention(text: str) -> str:
     """Remove only the known textual bot mention; preserve numeric/JID identifiers."""
@@ -84,6 +120,21 @@ def requested_creative_allowance(request: str, quoted_text: str = "") -> dict | 
         # explicit request grammar. An arbitrary quote cannot create permission.
         return _direct_creative_allowance(quoted_text)
     return None
+
+
+def requested_status_allowance(text: str) -> bool:
+    """True when the message explicitly asks about service, provider, or model state."""
+    return bool(RE_STATUS_SUBJECT.search(text) and RE_STATUS_ASK.search(text))
+
+
+def contains_internal_notice(text: str) -> bool:
+    """Routine model/provider/health announcements that must never reach a chat."""
+    if RE_NOTICE_SUBJECT.search(text) and RE_NOTICE_TRANSITION.search(text):
+        return True
+    if len(text) <= NOTICE_SHORT_LIMIT and "?" not in text:
+        if RE_NOTICE_COMPONENT.search(text) and RE_NOTICE_COMPONENT_STATE.search(text):
+            return True
+    return False
 
 
 def _repetition_within_allowance(text: str, allowance: dict | None) -> bool:
@@ -181,19 +232,53 @@ def has_repetition_loop(text: str) -> bool:
                 if c1 == c2 == c3:
                     return True
 
+    # 3. A short token or phrase repeated consecutively far past emphasis
+    # ("iya" x6, "tidak mau" x6). Threshold is deliberately high so ordinary
+    # emphasis and laughter stay untouched.
+    for span in (1, 2, 3):
+        i = 0
+        while i + span <= len(words):
+            unit = [w.lower() for w in words[i : i + span]]
+            j, repeats = i + span, 1
+            while j + span <= len(words) and [w.lower() for w in words[j : j + span]] == unit:
+                j += span
+                repeats += 1
+            if repeats >= 6:
+                return True
+            i += 1
+
     return False
 
 
-def contains_leak_signature(text: str, *, repetition_allowance: dict | None = None) -> bool:
+def count_sentences(text: str) -> int:
+    """Sentence-ish segments for the reply ceiling; fenced blocks are exempt."""
+    stripped = re.sub(r"(?ms)^\s*```[^\n]*\n.*?^\s*```\s*$", "", text)
+    segments = [segment for segment in re.split(r"[.!?\u2026\n]+", stripped) if segment.strip()]
+    return len(segments)
+
+
+def exceeds_sentence_ceiling(text: str, *, repetition_allowance: dict | None = None) -> bool:
+    """Hard ceiling on ordinary replies; explicit art/repetition keeps its own bounds."""
+    if repetition_allowance:
+        return False
+    return count_sentences(text) > SENTENCE_CEILING
+
+
+def contains_leak_signature(text: str, *, repetition_allowance: dict | None = None,
+                           notice_allowance: bool = False) -> bool:
     """Checks whether text contains internal harness tokens, drafting, or repetition loops.
 
     Ordinary user conversations discussing WhatsApp rate limits, slang, or technical
-    architecture will NOT trigger this check.
+    architecture will NOT trigger this check. Routine infrastructure notices are
+    blocked unless the current turn carries an explicit status ask.
     """
     if contains_internal_drafting(text):
         return True
 
     if has_repetition_loop(text) and not _repetition_within_allowance(text, repetition_allowance):
+        return True
+
+    if not notice_allowance and contains_internal_notice(text):
         return True
 
     normalized = normalize_for_inspection(text)
@@ -223,15 +308,21 @@ def contains_leak_signature(text: str, *, repetition_allowance: dict | None = No
     return False
 
 
-def sanitize_outbound_text(text: str, *, repetition_allowance: dict | None = None) -> tuple[str, bool]:
+def sanitize_outbound_text(text: str, *, repetition_allowance: dict | None = None,
+                           notice_allowance: bool = False) -> tuple[str, bool]:
     """Sanitizes a single outbound string.
 
     Returns:
         (clean_text, is_clean): tuple containing the text to send and a boolean flag.
     """
-    if contains_leak_signature(text, repetition_allowance=repetition_allowance):
+    if contains_leak_signature(text, repetition_allowance=repetition_allowance,
+                               notice_allowance=notice_allowance):
         digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
-        logger.warning("outbound_leak_blocked: hash=%s length=%d", digest, len(text))
+        logger.warning("outbound_leak_blocked: hash=%s length=%d reason=signature", digest, len(text))
+        return SAFE_FALLBACK_REPLY, False
+    if exceeds_sentence_ceiling(text, repetition_allowance=repetition_allowance):
+        digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+        logger.warning("outbound_leak_blocked: hash=%s length=%d reason=ceiling", digest, len(text))
         return SAFE_FALLBACK_REPLY, False
     return text, True
 

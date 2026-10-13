@@ -264,4 +264,16 @@ if __name__ == "__main__":
         if routing.returncode != 0:
             exit_code = 1
 
+        # Relay guard evaluation set: recorded failures must stay caught.
+        print("\n--- Relay eval set ---")
+        relay_eval = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "wa_eval.py")])
+        if relay_eval.returncode != 0:
+            exit_code = 1
+
+        # Agent surface parity: OpenCode, Antigravity, and Claude Code must match.
+        print("\n--- Agent surface parity ---")
+        agent_sync = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "verify_agent_sync.py")])
+        if agent_sync.returncode != 0:
+            exit_code = 1
+
     sys.exit(exit_code)

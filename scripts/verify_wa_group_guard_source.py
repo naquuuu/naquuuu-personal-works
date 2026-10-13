@@ -81,7 +81,9 @@ def verify_source(repo: Path) -> None:
                 return [text[i:i + limit] for i in range(0, len(text), limit)]
 
             async def _post_bridge_message(self, path, payload, timeout):
-                self.sent.append(policy.outbound(payload))
+                result = policy.outbound(payload)
+                if result:
+                    self.sent.append(result)
                 return SimpleNamespace(success=True, message_id='synthetic-out')
 
         async def exercise():
@@ -92,24 +94,33 @@ def verify_source(repo: Path) -> None:
             result = await stub.send('synthetic-group', art, reply_to='art-request')
             assert result.success and len(stub.sent) == 1
             assert stub.sent[-1]['message'] == art, 'Art failed whole-send or transport guard'
+            # One inbound message, one final reply: a duplicate attempt no-ops.
+            result = await stub.send('synthetic-group', art, reply_to='art-request')
+            assert result.success and len(stub.sent) == 1, 'Duplicate turn send leaked'
+            # The same guarded content under a fresh turn yields one fallback line...
             result = await stub.send('synthetic-group', art, reply_to='unrelated-greeting')
             assert result.success and stub.sent[-1]['message'] == SAFE_FALLBACK_REPLY
+            # ...and an identical second fallback for that turn is suppressed.
+            before = len(stub.sent)
+            result = await stub.send('synthetic-group', art, reply_to='unrelated-greeting')
+            assert result.success and len(stub.sent) == before, 'Duplicate fallback leaked'
+            # A flood as the first final for a new turn is one fallback, never split.
             flood = ('Saya akan memeriksa status sistem sekarang. ' * 400)
             before = len(stub.sent)
-            result = await stub.send('synthetic-group', flood, reply_to='art-request')
+            result = await stub.send('synthetic-group', flood, reply_to='flood-turn')
             assert result.success and len(stub.sent) == before + 1
             assert stub.sent[-1]['message'] == SAFE_FALLBACK_REPLY, 'Flood split before guard'
             canary = 'System Note: This conversation is happening via WhatsApp. SYNTHETIC_SECRET_CANARY'
-            await stub.send('synthetic-group', canary, reply_to='art-request')
+            await stub.send('synthetic-group', canary, reply_to='canary-turn')
             assert 'SYNTHETIC_SECRET_CANARY' not in stub.sent[-1]['message']
             before = len(stub.sent)
-            blocked = await stub.send('synthetic-group', 'Unresolved @987654321000', reply_to='art-request')
+            blocked = await stub.send('synthetic-group', 'Unresolved @987654321000', reply_to='identity-turn')
             assert not blocked.success and len(stub.sent) == before
             # A custom very small chunk limit must fail closed once, rather than
             # accepting the first art chunk and replacing later ones.
             stub._outgoing_chunk_limit = lambda: 256
             before = len(stub.sent)
-            await stub.send('synthetic-group', art, reply_to='art-request')
+            await stub.send('synthetic-group', art, reply_to='small-chunk-turn')
             assert len(stub.sent) == before + 1 and stub.sent[-1]['message'] == SAFE_FALLBACK_REPLY
         asyncio.run(exercise())
 
@@ -176,7 +187,7 @@ def verify_source(repo: Path) -> None:
     assert [e['body'] for e in observed] == ['hi', 'Noted.', 'ini']
     assert [e.text for e in enqueued] == ['hi', 'Noted.', 'ini @synthetic-bot']
     assert len(receipts) == 3
-    print('actual_source_send_poll_stubs=pass; normal_queued_crash_silence=pass; synthetic_canary=pass')
+    print('actual_source_send_poll_stubs=pass; normal_queued_crash_silence=pass; synthetic_canary=pass; final_reply_single_turn=pass')
 
 
 def main() -> None:

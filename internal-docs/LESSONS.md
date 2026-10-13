@@ -1,5 +1,5 @@
 # Lessons (curated)
-<!-- verified-against: ADR-044 -->
+<!-- verified-against: ADR-047 -->
 
 Short, append-only. Agents read this first together with `STATUS.md` — it exists so we do not re-read everything. Route through `internal-docs/INDEX.md` first; this file is the hot slice, not the archive.
 
@@ -28,6 +28,12 @@ L-29. ADR-041 (2026-09-30): route routine implementation/checks to configured lo
 L-30. ADR-043 (proposed 2026-10-02) removes laptop relay/standby duties. `mipad-linux` becomes standby only after disabled-Hermes setup, verified session transfer, phone-to-VPS kill-switch checks, Linux readiness, and a two-way drill; this is not yet implemented.
 
 L-31. The 2026-10-05 guard supports ordinary bounded requested text art and filters unaddressed group-idle events; `NO_REPLY` is for group idle/acks, never direct substantive questions. Tests and canaries passed; no real phone/group turn was verified (`2026-10-05-TEXT_ART_LOOP_FIX.md`).
+
+L-32. Cross-surface multi-agent parity (2026-10-13, ADR-046). All 7 agents mirrored in `.agents/agents/` for AGY, `CLAUDE.md` routes Claude Code to `AGENTS.md`, and `verify_agent_sync.py` runs inside `sync_all_repos.py --strict`. Four-block handoffs are validated by `verify_handoff.py`. Mermaid diagrams must use narrow vertical layouts (`flowchart TD`, width <= 80) to prevent terminal clipping.
+
+L-33. Relay trust pass (2026-10-13, ADR-047). One final reply per inbound message is claimed at the adapter send boundary (released only on a definite unconfirmed send), identical fallbacks dedupe per turn, routine model/provider/health notices are blocked across send/edit/proactive unless the service is down or the message asks for status, and ordinary replies carry a ~20 sentence ceiling while art/repeat allowances keep their bounds. `scripts/wa_eval.py` (ten anonymized ID/EN cases) runs inside `sync_all_repos.py --strict`. Live canary: one reply each to a DM greeting and a group mention, typing cleared; dual-provider failure stays stub-proven.
+
+L-34. Hash-verify every remote write script before its first live use (2026-10-13). A double-repr bug in `verify_soul_mirror.py` wrote an escaped one-line SOUL.md to the relay host; the hash-only mirror check caught the drift on the next run and the pre-change backup restored the exact persona. Keep the `--check`/`--apply` split, print hashes, and never skip the pre-change backup.
 
 ## Open questions
 
