@@ -39,6 +39,8 @@ L-35. Live feedback beats the earlier spec (2026-10-14). The ~20-sentence ceilin
 
 L-36. Restart churn breaks bridge sends (2026-10-14). Seven gateway restarts in one hour produced connection churn at the bridge ("connection closed / stream errored") and two replies failed with "Delivery uncertain" as silent losses (no replay by design). Batch deploy restarts, keep them to at most two per hour while the relay is in use, and after a send-failure stretch verify with one live reply before assuming recovery. Record: `relay/2026-10-14-GROUP_MEMORY_AND_TUNING.md` post-deploy incident.
 
+L-37. One hung send wedges every send behind it (2026-10-14). When the WhatsApp layer stalls outbound (probe: a dead-jid send times out at 60s while typing answers instantly), Baileys queues later sends behind the stuck one, so all replies fail until the socket is recreated. Recovery is the 2026-09-28 playbook: stop all activity, wait out the provider window, restart once, and verify with a single send before resuming. Keep the bridge's real error type in counts-only logs instead of discarding it.
+
 ## Open questions
 
 1. Compaction completed 2026-09-28 under ASTRA_ONESHOT authorization; L-01 through L-19 moved with stable IDs and L-13 remains resolvable in the archive.

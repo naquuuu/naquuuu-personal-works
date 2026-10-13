@@ -26,6 +26,10 @@ Bounded group context memory shipped and live-tested, plus the relay tuning fixe
 
 Two replies failed to deliver at 00:35:20 and 00:36:20 with "Delivery uncertain; automatic replay stopped"; the bridge log shows 12 connection churn events ("connection closed / stream errored") in that stretch, with no session conflict and no rate-limit indicator. Cause: reconnection churn from the night's deploy restarts (roughly seven gateway restarts in one hour). The no-replay guard kept the failure from duplicating, so the user saw silence. A final restart at 00:38:47 re-established the connection; from 00:39 onward: zero send failures, bridge connected, owner-verified reply. Operational rule for the next session: batch deploys into one restart; do not restart more than twice in an hour while the relay is in use. Recorded as `L-36`.
 
+## Send-stall diagnosis (2026-10-14, 00:41 onward)
+
+Sends failed again at 00:41:56, 00:43:24 and 00:43:32 while receives and polling stayed healthy. A loopback probe of the bridge itself settled it: `POST /send` with a dead jid returns `{"error":"sendMessage timed out after 60s"}` while `POST /typing` answers instantly. So `sock.sendMessage` is hanging for every outbound message at the WhatsApp layer (typing and inbound are fine), and because Baileys serializes sends, one hung send wedges the ones behind it until the socket is recreated. This is server-side outbound stalling, most plausibly a send-side cooldown after the night's volume plus reconnect churn; our guards only reported it honestly (delivery uncertain, no replay). Recovery follows the 2026-09-28 playbook: stop all activity and wait out the provider window; then restart once and verify with a single send before resuming. The bridge's real error text is discarded by the delivery patch today; tomorrow's fix adds a single transient retry, one plain failure notice option, and keeps the bridge error type in counts-only logs. Recorded as `L-37`.
+
 ## Verification
 
 - Local: 128 tests OK, relay eval 10/10, sanitization passes, agent parity OK, digest freshness OK.
