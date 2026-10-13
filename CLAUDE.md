@@ -1,4 +1,4 @@
-# NAQUUUU Workspace — Claude Code Operating Guide
+# NAQUUUU Workspace: Claude Code Operating Guide
 
 This workspace is the central engineering operating hub for personal projects, creative explorations, and portfolio applications. It operates under a **Single GCP Project, Multi-Repo Architecture**.
 
